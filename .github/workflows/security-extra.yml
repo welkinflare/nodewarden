@@ -30,7 +30,7 @@ jobs:
           GITLEAKS_ENABLE_SUMMARY: "true"
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
           # 如果仓库属于 GitHub Organization，需要在 Settings -> Secrets 里加 GITLEAKS_LICENSE
-          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
   osv:
     name: OSV Dependency Scan
