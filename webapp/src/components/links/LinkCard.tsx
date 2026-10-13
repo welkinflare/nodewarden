@@ -99,9 +99,7 @@ export function LinkCard({
               class="links-notes"
               dangerouslySetInnerHTML={{ __html: renderLinksMarkdown(effectiveNotes) }}
             />
-          ) : (
-            <div class="links-notes links-notes-empty">No notes yet.</div>
-          )
+          ) : null
         ) : null}
         <div class="links-actions">
           {bookmark.web_archive_snapshot_url ? (
@@ -130,7 +128,9 @@ export function LinkCard({
           {bookmark.shared ? (
             <button type="button" class="links-action" onClick={onToggleShared}>Unshare</button>
           ) : null}
-          {!prefs.permanentNotes ? (
+          {/* linkding rule: the Notes toggle only appears when the bookmark
+              has notes and they are not permanently shown. */}
+          {effectiveNotes && !prefs.permanentNotes ? (
             <>
               <span class="links-sep" aria-hidden="true">|</span>
               <button type="button" class="links-action" onClick={() => setNotesOpen((v) => !v)}>
