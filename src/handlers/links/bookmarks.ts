@@ -307,6 +307,8 @@ export async function handleCreateBookmark(
   const providedTags = parseTagNames(body);
 
   // Upsert: same user + same normalized URL updates in place, same id.
+  // Answers 201 like a create (linkding/DRF parity): API clients such as the
+  // browser extension treat any non-201 as a save failure.
   const existing = await store.getBookmarkByNormalized(userId, normalized);
   if (existing) {
     return applyUpsertUpdate(store, userId, existing, body, rawUrl, now, sharingEnabled, autoRules, new URL(request.url).origin);
@@ -402,7 +404,7 @@ async function applyUpsertUpdate(
   }
   const tags = await store.ensureTags(userId, tagNames, now);
   await store.setBookmarkTagLinks(userId, updated.id, tags.map((t) => t.id));
-  return jsonResponse(serializeBookmark(updated, tags.map((t) => t.name), origin), 200);
+  return jsonResponse(serializeBookmark(updated, tags.map((t) => t.name), origin), 201);
 }
 
 export async function handleGetBookmark(
