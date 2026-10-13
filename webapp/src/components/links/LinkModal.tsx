@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { AutoTextarea } from '@/components/links/AutoTextarea';
 import type { AuthedFetch } from '@/lib/api/shared';
 import {
   checkLinkBookmark,
@@ -41,17 +42,23 @@ function splitTags(raw: string): string[] {
 export function LinkModal({
   linksFetch,
   initial,
+  prefillUrl,
   tagOptions,
   onClose,
   onSaved,
 }: {
   linksFetch: AuthedFetch;
   initial: LinkBookmark | null;
+  prefillUrl?: string;
   tagOptions: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState<LinkBookmarkForm>(() => toLinkForm(initial));
+  // On create, seed the form from a URL captured elsewhere (e.g. the search box).
+  const [form, setForm] = useState<LinkBookmarkForm>(() => {
+    const base = toLinkForm(initial);
+    return initial || !prefillUrl ? base : { ...base, url: prefillUrl };
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [rescrape, setRescrape] = useState('');
@@ -136,24 +143,8 @@ export function LinkModal({
             onInput={(e) => set('title', (e.target as HTMLInputElement).value)}
           />
         </label>
-        <label class="mt-2 block text-sm">
-          Description
-          <textarea
-            class="input w-full"
-            rows={2}
-            value={form.description}
-            onInput={(e) => set('description', (e.target as HTMLTextAreaElement).value)}
-          />
-        </label>
-        <label class="mt-2 block text-sm">
-          Notes (Markdown)
-          <textarea
-            class="input w-full"
-            rows={3}
-            value={form.notes}
-            onInput={(e) => set('notes', (e.target as HTMLTextAreaElement).value)}
-          />
-        </label>
+        {/* Tags sit right after the title, matching linkding's edit form where
+            tags are a primary field placed above the description. */}
         <label class="mt-2 block text-sm">
           Tags (comma-separated)
           <input
@@ -168,6 +159,26 @@ export function LinkModal({
               <option key={tagName} value={tagName} />
             ))}
           </datalist>
+        </label>
+        <label class="mt-2 block text-sm">
+          Description
+          <AutoTextarea
+            value={form.description}
+            onInput={(v) => set('description', v)}
+            minRows={2}
+            maxRows={10}
+            ariaLabel="Description"
+          />
+        </label>
+        <label class="mt-2 block text-sm">
+          Notes (Markdown)
+          <AutoTextarea
+            value={form.notes}
+            onInput={(v) => set('notes', v)}
+            minRows={3}
+            maxRows={16}
+            ariaLabel="Notes"
+          />
         </label>
         <div class="mt-2 flex flex-wrap gap-3 text-sm">
           <label class="flex items-center gap-1">

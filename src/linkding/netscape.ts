@@ -7,6 +7,7 @@ export interface NetscapeBookmarkInput {
   url: string;
   title: string;
   description: string;
+  notes: string;
   tags: string[];
   dateAdded: string;
 }
@@ -15,6 +16,7 @@ export interface NetscapeBookmarkOutput {
   url: string;
   title: string;
   description: string;
+  notes?: string;
   tags: string[];
   dateAdded: string;
 }
@@ -49,6 +51,32 @@ function addDateOf(dateAdded: string): number {
   return Math.floor((Number.isFinite(ms) ? ms : Date.now()) / 1000);
 }
 
+// linkding's HTML export packs the bookmark notes onto the end of the <DD>
+// description, separated by a literal "[linkding-notes]" marker, because the
+// Netscape format has no notes field. Split it back out so imported bookmarks
+// keep description and notes distinct.
+const LINKDING_NOTES_MARKER = '[linkding-notes]';
+
+function splitLinkdingNotes(description: string): { description: string; notes: string } {
+  const at = description.indexOf(LINKDING_NOTES_MARKER);
+  if (at < 0) return { description, notes: '' };
+  return {
+    description: description.slice(0, at).trim(),
+    notes: description.slice(at + LINKDING_NOTES_MARKER.length).trim(),
+  };
+}
+
+// The Netscape format has no notes field, so linkding appends notes to the
+// description behind a literal "[linkding-notes]" marker. Emit the same shape
+// so our HTML export round-trips through linkding (and back into our importer)
+// without losing notes.
+function withNotes(description: string, notes: string): string {
+  const trimmedNotes = notes.trim();
+  if (!trimmedNotes) return description;
+  const base = description.trim();
+  return base ? `${base}${LINKDING_NOTES_MARKER}${trimmedNotes}` : trimmedNotes;
+}
+
 export function buildNetscape(bookmarks: NetscapeBookmarkOutput[]): string {
   const lines: string[] = [
     "<!DOCTYPE NETSCAPE-Bookmark-file-1>",
@@ -66,8 +94,9 @@ export function buildNetscape(bookmarks: NetscapeBookmarkOutput[]): string {
         `ADD_DATE="${addDateOf(b.dateAdded)}" ` +
         `TAGS="${escapeAttr(tags.join(","))}">${escapeText(b.title || b.url)}</A>`,
     );
-    if (b.description) {
-      lines.push(`<DD>${escapeText(b.description)}</DD>`);
+    const combined = withNotes(b.description, b.notes ?? '');
+    if (combined) {
+      lines.push(`<DD>${escapeText(combined)}</DD>`);
     }
   }
   lines.push("</DL><p>", "</DL><p>");
@@ -114,13 +143,14 @@ export function parseNetscape(html: string): NetscapeBookmarkInput[] {
           m[1].replace(/<[^>]*>/g, "").trim(),
         );
         // Optional <DD>description</DD> (or bare <DD>text) after </A>.
-        let description = "";
+        let rawDescription = "";
         const rest = html.slice(anchorRe.lastIndex);
         const dd = /^[\s\r\n]*<DD\s*>([\s\S]*?)(?:<\/DD\s*>|(?=<DT|<DL|\s*$))/i.exec(rest);
         if (dd) {
-          description = unescapeHtml(dd[1].replace(/<[^>]*>/g, "").trim());
+          rawDescription = unescapeHtml(dd[1].replace(/<[^>]*>/g, "").trim());
         }
-        out.push({ url, title: title || url, description, tags, dateAdded });
+        const { description, notes } = splitLinkdingNotes(rawDescription);
+        out.push({ url, title: title || url, description, notes, tags, dateAdded });
       } catch {
         // Skip a single broken entry; keep importing the rest.
         continue;

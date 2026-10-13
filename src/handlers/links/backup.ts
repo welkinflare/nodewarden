@@ -147,13 +147,13 @@ function toImportEntries(raw: unknown): ImportEntry[] {
 }
 
 function netscapeEntriesToImport(
-  parsed: Array<{ url: string; title: string; description: string; tags: string[]; dateAdded: string }>
+  parsed: Array<{ url: string; title: string; description: string; notes?: string; tags: string[]; dateAdded: string }>
 ): ImportEntry[] {
   return parsed.map((p) => ({
     url: String(p.url ?? '').trim(),
     title: String(p.title ?? ''),
     description: String(p.description ?? ''),
-    notes: '',
+    notes: String(p.notes ?? ''),
     tag_names: Array.isArray(p.tags) ? p.tags.map((t) => String(t)) : [],
     unread: 0,
     is_archived: 0,
@@ -477,6 +477,7 @@ export async function handleLinksExportHtml(
       url: String(b['url'] ?? ''),
       title: String(b['title'] ?? b['url'] ?? ''),
       description: String(b['description'] ?? ''),
+      notes: String(b['notes'] ?? ''),
       tags: Array.isArray(b['tag_names']) ? (b['tag_names'] as string[]) : [],
       dateAdded: String(b['date_added'] ?? new Date().toISOString()),
     }))

@@ -85,6 +85,26 @@ export function waybackSnapshotUrl(url: string, now: Date = new Date()): string 
   return `https://web.archive.org/web/${stamp}/${url}`;
 }
 
+// The links UI renders each favicon as an <img>, and the app CSP allows images
+// only from 'self' and data:. Absolute favicon URLs (scraped page icons and the
+// Google s2 fallback) are therefore blocked in the browser. NodeWarden already
+// exposes a same-origin website-icon proxy at /icons/{host}/icon.png — the same
+// one the vault uses — so resolve every bookmark icon through it at
+// serialization time. Doing this on read fixes existing rows with no migration,
+// and keeps the stored favicon_url untouched for backup/export fidelity. The
+// "no fallback=404" form returns the default globe icon instead of a 404, so
+// bookmarks without a known icon render cleanly. The UI still gates rendering on
+// the enable_favicons profile preference.
+function sameOriginFaviconUrl(url: string): string {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (!host) return '';
+    return `/icons/${encodeURIComponent(host)}/icon.png`;
+  } catch {
+    return '';
+  }
+}
+
 export function serializeBookmark(row: LinkBookmarkRow, tagNames: string[]): Record<string, unknown> {
   return {
     id: row.id,
@@ -97,7 +117,7 @@ export function serializeBookmark(row: LinkBookmarkRow, tagNames: string[]): Rec
     is_archived: row.is_archived,
     shared: row.shared,
     web_archive_snapshot_url: row.web_archive_snapshot_url,
-    favicon_url: row.favicon_url,
+    favicon_url: sameOriginFaviconUrl(row.url),
     preview_image_url: row.preview_image_url,
     date_added: row.date_added,
     date_modified: row.date_modified,

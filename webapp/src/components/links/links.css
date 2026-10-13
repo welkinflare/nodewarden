@@ -2,15 +2,42 @@
    nodewarden design tokens. Only layout/linkding-specific bits live here;
    buttons/inputs/panels reuse the shared .btn/.input/.card vocabulary. */
 
-.links-layout {
+/* Two-column linkding arrangement: main list : side panel ≈ 2:1, matching the
+   reference layout (col-2 / col-1). The side panel stretches to the full height
+   of the main column so both blocks read as one unified page. */
+/* Two-panel layout: flexible main panel (view bar + search + list) and a
+   narrower right panel for Bundles/Tags. The side panel keeps a fixed track so
+   it never stretches with the list, matching the app's fixed-width sidebars.
+   Collapses to a single column only on genuinely narrow screens. */
+.links-panels {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 264px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 12px;
   align-items: start;
 }
 
-@media (max-width: 1080px) {
-  .links-layout {
+.links-main {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+/* The right panel is one continuous card: Bundles and Tags are stacked inside
+   it with no gap or separating border between them. */
+.links-side-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+@media (max-width: 900px) {
+  .links-panels {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -37,11 +64,31 @@
   display: flex;
   gap: 6px;
   align-items: center;
+  /* Search field plus its sibling buttons fill the full panel width. */
+  width: 100%;
 }
 
-.links-searchrow .search-input {
-  flex: 1;
+/* Fixed-width search field: the search box and its sibling buttons stay within
+   the left column instead of stretching across the whole page. */
+.links-searchrow .links-search {
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Search field wrapper so the clear button can sit inside the input, matching
+   the vault search box. */
+.links-search-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.links-search-wrap .links-search {
+  padding-right: 38px;
+}
+
+/* Vault-style "+" affordance for adding a bookmark. */
+.links-add-btn {
+  flex: 0 0 auto;
 }
 
 .links-views {
@@ -70,8 +117,223 @@
   color: var(--muted);
 }
 
+/* Empty state — mirrors linkding's two-part empty message (title + helpful
+   subtitle with next steps). */
+.links-empty {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 32px 4px;
+}
+
+.links-empty-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.links-empty-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  max-width: 56ch;
+}
+
+/* "Load more" pagination footer (linkding pages the list; we append pages). */
+.links-loadmore {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
 .links-options-wrap {
   position: relative;
+}
+
+/* View switcher (Active/Archived/Unread/Shared) + result count, sitting under
+   the search field. */
+.links-viewbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+
+.links-views-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.links-view-toggle {
+  gap: 6px;
+  font-weight: 500;
+}
+
+.links-view-toggle.active {
+  color: var(--primary-strong);
+}
+
+.links-view-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  min-width: 150px;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+}
+
+/* Read-only "View" details dialog, mirroring linkding's details modal. */
+.links-details {
+  width: 100%;
+  max-width: 640px;
+  max-height: calc(100vh - 60px);
+  overflow: auto;
+  padding: 0;
+}
+
+.links-details-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.links-details-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.links-details-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.links-details-weblinks {
+  display: grid;
+  gap: 6px;
+}
+
+.links-details-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--primary-strong, var(--primary));
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.links-details-link:hover {
+  text-decoration: underline;
+}
+
+.links-details-favicon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.links-details-preview {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+}
+
+.links-details-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+/* Description / Tags / Notes each get their own labelled block so they read as
+   distinct sections instead of one undifferentiated run of text. */
+.links-details-block {
+  display: grid;
+  gap: 6px;
+}
+
+.links-details-label {
+  margin: 0;
+  font-size: var(--font-xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: var(--leading-tight);
+}
+
+.links-details-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.links-details-tag {
+  font-size: 0.75rem;
+  color: var(--muted-strong);
+  background: var(--panel-soft);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.links-details-notes {
+  margin-top: 0;
+}
+
+.links-details-meta {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.links-details-meta > div {
+  display: flex;
+  gap: 8px;
+}
+
+.links-details-meta dt {
+  min-width: 68px;
+  font-weight: 600;
+}
+
+.links-details-meta dd {
+  margin: 0;
+}
+
+.links-details-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+/* Auto-growing textareas: height is driven by script, so block manual resize
+   and let overflow-y switch to a scrollbar past the max row count. */
+.links-modal textarea {
+  resize: none;
+  overflow-y: hidden;
+  transition: height 120ms var(--ease-smooth);
 }
 
 .links-options {
@@ -115,9 +377,19 @@
 
 .links-item {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
   padding: 12px 2px;
   border-bottom: 1px solid var(--line-soft);
+}
+
+/* Keep the favicon at its intrinsic 16x16 box regardless of row height —
+   flex `stretch` would otherwise elongate it. */
+.links-item > img {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
 }
 
 .links-item:first-child {
@@ -157,6 +429,11 @@
   margin-top: 4px;
   font-size: 0.85rem;
   color: var(--text);
+  /* Clamp long descriptions to 3 lines, matching linkding's truncate. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .links-item-desc .taglink {
@@ -190,21 +467,24 @@
   margin-bottom: 0;
 }
 
-.links-meta {
-  margin-top: 6px;
+.links-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 2px 8px;
+  margin-top: 4px;
+}
+
+.links-date {
   font-size: 0.75rem;
   color: var(--muted);
 }
 
-.links-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  margin-top: 4px;
+.links-sep {
+  font-size: 0.75rem;
+  color: var(--muted);
+  opacity: 0.55;
+  user-select: none;
 }
 
 .links-action {
@@ -226,40 +506,108 @@
   color: var(--danger);
 }
 
-.links-cloud {
+:root[data-theme='dark'] .links-item-desc .taglink {
+  color: #2dd4bf;
+}
+
+/* Bundles and Tags stack flush inside the single right-hand panel: no gap and
+   no per-block border, so they read as one continuous surface. */
+.links-side-stack {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2px 10px;
+  flex-direction: column;
+  gap: 0;
+}
+
+.links-side-stack > .sidebar-block {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  margin-bottom: 0;
+  box-shadow: none;
+}
+
+.links-side-stack > .sidebar-block + .sidebar-block {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+@media (max-width: 900px) {
+  .links-side-stack > .sidebar-block {
+    margin-bottom: 12px;
+  }
+}
+
+/* linkding-style tag cloud: compact inline flow, selected tags on top in bold
+   with a "-" prefix (click removes them from the search), the rest grouped by
+   initial letter with the group-initial highlighted. */
+.links-tag-cloud {
   font-size: 0.82rem;
   line-height: 1.7;
 }
 
-.links-cloud button {
+.links-tag-selected {
+  margin: 0 0 6px;
+}
+
+.links-tag-active {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-right: 8px;
+  font: inherit;
+  font-weight: 700;
+  color: #0e7490;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.links-tag-active:hover {
+  text-decoration: underline;
+}
+
+.links-tag-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.links-tag-group {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+
+.links-tag {
   background: none;
   border: none;
   padding: 0;
   font: inherit;
   color: #0e7490;
+  text-transform: capitalize;
   cursor: pointer;
 }
 
-.links-cloud button:hover {
+.links-tag:hover {
   text-decoration: underline;
 }
 
-.links-cloud .count {
-  color: var(--muted);
-  font-size: 0.72rem;
+.links-tag-initial {
+  font-weight: 700;
 }
 
-:root[data-theme='dark'] .links-item-desc .taglink,
-:root[data-theme='dark'] .links-cloud button {
+:root[data-theme='dark'] .links-tag,
+:root[data-theme='dark'] .links-tag-active {
   color: #2dd4bf;
 }
 
-.links-side-stack {
-  display: grid;
-  gap: 16px;
+/* Compact sidebar rows (bundles): tighter than the vault tree-row default so
+   long lists stay scannable. Scoped here to avoid touching the vault. */
+.links-side-panel .tree-btn {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  margin-bottom: 0;
 }
 
 .links-bulkbar {

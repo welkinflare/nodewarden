@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AuthedFetch } from '@/lib/api/shared';
 import {
@@ -19,6 +19,10 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
   const [pendingJson, setPendingJson] = useState<unknown>(null);
   const [ack, setAck] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [jsonName, setJsonName] = useState('');
+  const [htmlName, setHtmlName] = useState('');
+  const jsonRef = useRef<HTMLInputElement>(null);
+  const htmlRef = useRef<HTMLInputElement>(null);
 
   function refresh() {
     queryClient.invalidateQueries({ queryKey: ['links-bookmarks'] });
@@ -28,6 +32,7 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
 
   async function onJsonFile(file: File | undefined) {
     if (!file) return;
+    setJsonName(file.name);
     setError('');
     setInfo('');
     setPreview(null);
@@ -45,6 +50,7 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
 
   async function onHtmlFile(file: File | undefined) {
     if (!file) return;
+    setHtmlName(file.name);
     setError('');
     setInfo('');
     setPreview(null);
@@ -89,7 +95,7 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
       <div class="card p-3">
         <h2 class="mb-2 font-medium">Export</h2>
         <div class="flex flex-wrap gap-2 text-sm">
-          <button class="btn btn-secondary small" onClick={() => downloadLinksExport('export.json')}>
+          <button class="btn btn-primary small" onClick={() => downloadLinksExport('export.json')}>
             Download JSON backup
           </button>
           <button class="btn btn-secondary small" onClick={() => downloadLinksExport('export.html')}>
@@ -100,25 +106,29 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
 
       <div class="space-y-2 card p-3">
         <h2 class="font-medium">Import</h2>
-        <div class="flex flex-wrap gap-4 text-sm">
-          <label class="block">
-            JSON backup file
-            <input
-              class="mt-1 block"
-              type="file"
-              accept="application/json,.json"
-              onChange={(e) => void onJsonFile((e.target as HTMLInputElement).files?.[0])}
-            />
-          </label>
-          <label class="block">
-            Netscape HTML file
-            <input
-              class="mt-1 block"
-              type="file"
-              accept=".html,.htm,text/html"
-              onChange={(e) => void onHtmlFile((e.target as HTMLInputElement).files?.[0])}
-            />
-          </label>
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+          <input
+            ref={jsonRef}
+            class="hidden"
+            type="file"
+            accept="application/json,.json"
+            onChange={(e) => void onJsonFile((e.target as HTMLInputElement).files?.[0])}
+          />
+          <button class="btn btn-secondary small" onClick={() => jsonRef.current?.click()}>
+            Choose JSON backup…
+          </button>
+          {jsonName ? <span class="links-hint">{jsonName}</span> : null}
+          <input
+            ref={htmlRef}
+            class="hidden"
+            type="file"
+            accept=".html,.htm,text/html"
+            onChange={(e) => void onHtmlFile((e.target as HTMLInputElement).files?.[0])}
+          />
+          <button class="btn btn-secondary small" onClick={() => htmlRef.current?.click()}>
+            Choose Netscape HTML…
+          </button>
+          {htmlName ? <span class="links-hint">{htmlName}</span> : null}
         </div>
         {preview ? (
           <div class="card px-2 py-1 text-sm">

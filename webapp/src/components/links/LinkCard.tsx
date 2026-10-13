@@ -21,6 +21,7 @@ export function LinkCard({
   selected,
   onToggle,
   onTagClick,
+  onView,
   onEdit,
   onArchive,
   onDelete,
@@ -33,6 +34,7 @@ export function LinkCard({
   selected: boolean;
   onToggle: () => void;
   onTagClick: (tag: string) => void;
+  onView: () => void;
   onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
@@ -91,32 +93,29 @@ export function LinkCard({
             dangerouslySetInnerHTML={{ __html: renderLinksMarkdown(bookmark.notes) }}
           />
         ) : null}
-        <div class="links-meta">
-          <span title={formatLinksAbsolute(bookmark.date_added)}>{date}</span>
-          {bookmark.unread ? <span>· unread</span> : null}
-          {bookmark.is_archived ? <span>· archived</span> : null}
-          {bookmark.shared ? <span>· shared</span> : null}
-          {bookmark.web_archive_snapshot_url ? (
-            <span>· <a href={bookmark.web_archive_snapshot_url} target="_blank" rel="noreferrer">archive.org</a></span>
-          ) : null}
-        </div>
         <div class="links-actions">
-          {bookmark.notes && !prefs.permanentNotes ? (
-            <button type="button" class="links-action" onClick={() => setNotesOpen((v) => !v)}>
-              {notesOpen ? 'Hide' : 'View'}
-            </button>
-          ) : null}
+          <span class="links-date" title={formatLinksAbsolute(bookmark.date_added)}>{date}</span>
+          <span class="links-sep" aria-hidden="true">|</span>
+          <button type="button" class="links-action" onClick={onView}>View</button>
           <button type="button" class="links-action" onClick={onEdit}>Edit</button>
           <button type="button" class="links-action" onClick={onArchive}>
             {bookmark.is_archived ? 'Unarchive' : 'Archive'}
           </button>
-          <button type="button" class="links-action" onClick={onToggleUnread}>
-            {bookmark.unread ? 'Mark read' : 'Mark unread'}
-          </button>
-          <button type="button" class="links-action" onClick={onToggleShared}>
-            {bookmark.shared ? 'Unshare' : 'Share'}
-          </button>
           <button type="button" class="links-action danger" onClick={onDelete}>Remove</button>
+          {bookmark.unread ? (
+            <button type="button" class="links-action" onClick={onToggleUnread}>Mark read</button>
+          ) : null}
+          {bookmark.shared ? (
+            <button type="button" class="links-action" onClick={onToggleShared}>Unshare</button>
+          ) : null}
+          {bookmark.notes && !prefs.permanentNotes ? (
+            <>
+              <span class="links-sep" aria-hidden="true">|</span>
+              <button type="button" class="links-action" onClick={() => setNotesOpen((v) => !v)}>
+                {notesOpen ? 'Hide notes' : 'Notes'}
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
     </div>
