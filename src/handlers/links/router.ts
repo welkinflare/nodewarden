@@ -10,7 +10,7 @@
 //   under /api/bookmarks/*).
 // The /api/links/* table mirrors linkflare 1:1 (same paths minus the
 // prefix, same query params): bookmarks, bookmarks/bulk, bookmarks/check,
-// bookmarks/archived, bookmarks/:id + :id/archive|:id/unarchive, tags,
+// bookmarks/archived, bookmarks/shared, bookmarks/:id + :id/archive|:id/unarchive, tags,
 // tags/merge, tags/:id, bundles, bundles/:id, user/profile, settings,
 // settings/tokens, settings/tokens/:id, backup/export.json|export.html,
 // backup/import.json|import.html (with ?preview= dry-run).
@@ -31,6 +31,7 @@ import {
   handleGetBookmark,
   handleListArchivedBookmarks,
   handleListBookmarks,
+  handleListSharedBookmarks,
   handleUpdateBookmark,
 } from './bookmarks';
 import {
@@ -86,6 +87,10 @@ function bookmarkRoutes(
   if (path === `${base}/check` && method === 'GET') return handleCheckBookmark(request, env, userId, url);
   if (path === `${base}/archived` && method === 'GET') {
     return handleListArchivedBookmarks(request, env, userId, url);
+  }
+  // Literal "shared" must match before :id (the UUID pattern would swallow it).
+  if (path === `${base}/shared` && method === 'GET') {
+    return handleListSharedBookmarks(request, env, userId, url);
   }
   const archiveMatch = new RegExp(`^${base}/(${UUID})/(archive|unarchive)$`).exec(path);
   if (archiveMatch && method === 'POST') {

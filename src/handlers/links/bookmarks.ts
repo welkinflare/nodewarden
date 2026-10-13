@@ -125,6 +125,10 @@ export function serializeBookmark(
     web_archive_snapshot_url: row.web_archive_snapshot_url,
     favicon_url: origin ? sameOriginFaviconUrl(row.url, origin) : row.favicon_url,
     preview_image_url: row.preview_image_url,
+    // Empty back-compat dummies, matching linkding's serializer which keeps
+    // these fields (always empty) for older clients.
+    website_title: '',
+    website_description: '',
     date_added: row.date_added,
     date_modified: row.date_modified,
     date_accessed: row.date_accessed,
@@ -243,6 +247,20 @@ export async function handleListArchivedBookmarks(
   url: URL
 ): Promise<Response> {
   return listBookmarksWithFilters(request, env, userId, url, true);
+}
+
+// GET .../shared (linkding compat): shared, unarchived bookmarks of the
+// authed user. Implemented as the standard list with the shared filter
+// forced on, so counts/pagination behave identically.
+export async function handleListSharedBookmarks(
+  request: Request,
+  env: Env,
+  userId: string,
+  url: URL
+): Promise<Response> {
+  const sharedUrl = new URL(url.toString());
+  sharedUrl.searchParams.set('shared', '1');
+  return listBookmarksWithFilters(request, env, userId, sharedUrl, false);
 }
 
 // GET check endpoint (linkding compat).
@@ -512,9 +530,7 @@ export async function handleArchiveBookmark(
   });
   // updateBookmark re-reads scoped by user_id: null means foreign/missing.
   if (!updated) return jsonResponse({ detail: NOT_FOUND }, 404);
-  const tagNames =
-    (await store.getTagNamesForBookmarks(userId, [updated.id])).get(updated.id) ?? [];
-  return jsonResponse(serializeBookmark(updated, tagNames, new URL(request.url).origin));
+  return new Response(null, { status: 204 });
 }
 
 const BULK_ACTIONS = new Set([

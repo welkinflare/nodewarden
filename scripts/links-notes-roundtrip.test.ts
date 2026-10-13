@@ -12,7 +12,7 @@ import {
   withNotes,
 } from '../src/linkding/netscape';
 import { buildLinksListFilterClause } from '../src/services/links-storage';
-import { sameOriginFaviconUrl } from '../src/handlers/links/bookmarks';
+import { sameOriginFaviconUrl, serializeBookmark } from '../src/handlers/links/bookmarks';
 
 test('splitLinkdingNotes strips a paired marker', () => {
   const out = splitLinkdingNotes(
@@ -92,4 +92,28 @@ test('sameOriginFaviconUrl builds absolute proxy URLs', () => {
   );
   assert.equal(sameOriginFaviconUrl('not a url', 'http://127.0.0.1:8787'), '');
   assert.equal(sameOriginFaviconUrl('https://example.com/', ''), '');
+});
+
+test('serializeBookmark matches linkding response shape', () => {
+  const row = {
+    id: 'id-1',
+    url: 'https://example.com/a',
+    title: 'A',
+    description: 'd',
+    notes: 'n',
+    unread: 0,
+    is_archived: 0,
+    shared: 1,
+    web_archive_snapshot_url: '',
+    favicon_url: 'https://www.google.com/s2/favicons?domain=example.com&sz=32',
+    preview_image_url: '',
+    date_added: '2026-01-01T00:00:00.000Z',
+    date_modified: '2026-01-02T00:00:00.000Z',
+    date_accessed: '',
+  };
+  const out = serializeBookmark(row as never, ['x'], 'http://127.0.0.1:8787') as Record<string, unknown>;
+  assert.equal(out['favicon_url'], 'http://127.0.0.1:8787/icons/example.com/icon.png');
+  assert.equal(out['website_title'], '');
+  assert.equal(out['website_description'], '');
+  assert.deepEqual(out['tag_names'], ['x']);
 });
