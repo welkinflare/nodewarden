@@ -46,9 +46,17 @@ export function LinkCard({
     ? formatLinksAbsolute(bookmark.date_added)
     : formatLinksRelative(bookmark.date_added);
   const tags = bookmark.tag_names ?? [];
+  // Legacy linkding HTML imports packed notes onto the description behind a
+  // "[linkding-notes]" marker. Strip it for display (same self-heal as the
+  // details view); stored data is untouched.
+  const displayDescription = (() => {
+    const raw = bookmark.description ?? '';
+    const at = raw.indexOf('[linkding-notes]');
+    return at < 0 ? raw : raw.slice(0, at).trim();
+  })();
 
   return (
-    <div class="links-item">
+    <div class={`links-item ${Number(bookmark.unread) === 1 ? 'unread' : ''}`}>
       {bulkMode ? (
         <input
           type="checkbox"
@@ -59,7 +67,7 @@ export function LinkCard({
         />
       ) : null}
       {prefs.showFavicon && bookmark.favicon_url ? (
-        <img src={bookmark.favicon_url} alt="" width={16} height={16} loading="lazy" style={{ marginTop: 2 }} />
+        <img src={bookmark.favicon_url} alt="" width={24} height={24} loading="lazy" style={{ marginTop: 2 }} />
       ) : null}
       <div class="links-item-body">
         <a
@@ -73,7 +81,7 @@ export function LinkCard({
         {prefs.showDisplayUrl ? (
           <div class="links-item-url">{displayLinksUrl(bookmark.url)}</div>
         ) : null}
-        {(tags.length > 0 || bookmark.description) ? (
+        {(tags.length > 0 || displayDescription) ? (
           <div class="links-item-desc">
             {tags.map((tagName, i) => (
               <span key={tagName}>
@@ -83,8 +91,8 @@ export function LinkCard({
                 </button>
               </span>
             ))}
-            {tags.length > 0 && bookmark.description ? <span> | </span> : null}
-            {bookmark.description ? <span>{bookmark.description}</span> : null}
+            {tags.length > 0 && displayDescription ? <span> | </span> : null}
+            {displayDescription ? <span>{displayDescription}</span> : null}
           </div>
         ) : null}
         {bookmark.notes && (notesOpen || prefs.permanentNotes) ? (
@@ -94,7 +102,19 @@ export function LinkCard({
           />
         ) : null}
         <div class="links-actions">
-          <span class="links-date" title={formatLinksAbsolute(bookmark.date_added)}>{date}</span>
+          {bookmark.web_archive_snapshot_url ? (
+            <a
+              class="links-date"
+              href={bookmark.web_archive_snapshot_url}
+              target="_blank"
+              rel="noreferrer"
+              title={formatLinksAbsolute(bookmark.date_added)}
+            >
+              {date}
+            </a>
+          ) : (
+            <span class="links-date" title={formatLinksAbsolute(bookmark.date_added)}>{date}</span>
+          )}
           <span class="links-sep" aria-hidden="true">|</span>
           <button type="button" class="links-action" onClick={onView}>View</button>
           <button type="button" class="links-action" onClick={onEdit}>Edit</button>

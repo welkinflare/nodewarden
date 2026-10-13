@@ -379,16 +379,24 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 12px 2px;
-  border-bottom: 1px solid var(--line-soft);
+  padding: 2px;
+  margin-bottom: 10px;
 }
 
-/* Keep the favicon at its intrinsic 16x16 box regardless of row height —
-   flex `stretch` would otherwise elongate it. */
+.links-item:last-child {
+  margin-bottom: 0;
+}
+
+.links-item.unread .links-item-title {
+  font-style: italic;
+}
+
+/* Keep the favicon at its 24px box (same as vault list rows) regardless of row
+   height — flex `stretch` would otherwise elongate it. */
 .links-item > img {
   flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
@@ -406,11 +414,15 @@
 }
 
 .links-item-title {
+  display: block;
   font-weight: 600;
   font-size: 0.95rem;
   color: var(--primary-strong, var(--primary));
   text-decoration: none;
   overflow-wrap: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .links-item-title:hover {
@@ -429,11 +441,10 @@
   margin-top: 4px;
   font-size: 0.85rem;
   color: var(--text);
-  /* Clamp long descriptions to 3 lines, matching linkding's truncate. */
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  /* Single-line ellipsis like linkding's inline truncated description. */
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .links-item-desc .taglink {
@@ -457,6 +468,8 @@
   color: var(--muted-strong);
   background: var(--panel-soft);
   border-radius: 6px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .links-notes p {
@@ -476,12 +489,18 @@
 }
 
 .links-date {
-  font-size: 0.75rem;
+  font-size: var(--font-xs);
   color: var(--muted);
+  text-decoration: none;
+}
+
+a.links-date:hover {
+  color: var(--primary);
+  text-decoration: underline;
 }
 
 .links-sep {
-  font-size: 0.75rem;
+  font-size: var(--font-xs);
   color: var(--muted);
   opacity: 0.55;
   user-select: none;
@@ -492,14 +511,15 @@
   border: none;
   padding: 0;
   font: inherit;
-  font-size: 0.75rem;
+  font-size: var(--font-xs);
+  font-weight: 400;
   color: var(--muted);
   cursor: pointer;
+  text-decoration: none;
 }
 
 .links-action:hover {
-  color: var(--primary);
-  text-decoration: underline;
+  color: var(--text);
 }
 
 .links-action.danger:hover {
@@ -569,7 +589,7 @@
 
 .links-tag-groups {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .links-tag-group {
