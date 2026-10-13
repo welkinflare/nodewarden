@@ -52,29 +52,33 @@ function addDateOf(dateAdded: string): number {
 }
 
 // linkding's HTML export packs the bookmark notes onto the end of the <DD>
-// description, separated by a literal "[linkding-notes]" marker, because the
-// Netscape format has no notes field. Split it back out so imported bookmarks
-// keep description and notes distinct.
-const LINKDING_NOTES_MARKER = '[linkding-notes]';
+// description, wrapped in a literal "[linkding-notes]...[/linkding-notes]"
+// marker pair, because the Netscape format has no notes field. Split it back
+// out so imported bookmarks keep description and notes distinct. Mirrors
+// linkding's own parser: split on the first open marker, cut notes at the
+// first close marker (a missing closer takes the rest, like linkding).
+export const LINKDING_NOTES_MARKER = '[linkding-notes]';
+export const LINKDING_NOTES_CLOSE_MARKER = '[/linkding-notes]';
 
-function splitLinkdingNotes(description: string): { description: string; notes: string } {
+export function splitLinkdingNotes(description: string): { description: string; notes: string } {
   const at = description.indexOf(LINKDING_NOTES_MARKER);
   if (at < 0) return { description, notes: '' };
-  return {
-    description: description.slice(0, at).trim(),
-    notes: description.slice(at + LINKDING_NOTES_MARKER.length).trim(),
-  };
+  const after = description.slice(at + LINKDING_NOTES_MARKER.length);
+  const end = after.indexOf(LINKDING_NOTES_CLOSE_MARKER);
+  const notes = (end < 0 ? after : after.slice(0, end)).trim();
+  return { description: description.slice(0, at).trim(), notes };
 }
 
 // The Netscape format has no notes field, so linkding appends notes to the
-// description behind a literal "[linkding-notes]" marker. Emit the same shape
-// so our HTML export round-trips through linkding (and back into our importer)
-// without losing notes.
-function withNotes(description: string, notes: string): string {
+// description behind a "[linkding-notes]...[/linkding-notes]" marker pair.
+// Emit the same shape so our HTML export round-trips through linkding (and
+// back into our importer) without losing notes. The pair is always emitted
+// when notes exist — even with an empty description — so a notes-only
+// bookmark does not come back as description text.
+export function withNotes(description: string, notes: string): string {
   const trimmedNotes = notes.trim();
   if (!trimmedNotes) return description;
-  const base = description.trim();
-  return base ? `${base}${LINKDING_NOTES_MARKER}${trimmedNotes}` : trimmedNotes;
+  return `${description.trim()}${LINKDING_NOTES_MARKER}${trimmedNotes}${LINKDING_NOTES_CLOSE_MARKER}`;
 }
 
 export function buildNetscape(bookmarks: NetscapeBookmarkOutput[]): string {

@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { AutoTextarea } from '@/components/links/AutoTextarea';
 import type { AuthedFetch } from '@/lib/api/shared';
+import { splitLinkdingNotes } from '@/lib/links-utils';
 import {
   checkLinkBookmark,
   createLinkBookmark,
@@ -20,11 +21,15 @@ export interface LinkBookmarkForm {
 }
 
 export function toLinkForm(b?: LinkBookmark | null): LinkBookmarkForm {
+  // Split a legacy "[linkding-notes]" payload so the edit form shows a clean
+  // description and the embedded notes instead of raw marker text. Saving
+  // then normalizes the stored row.
+  const { description, notes: embeddedNotes } = splitLinkdingNotes(b?.description ?? '');
   return {
     url: b?.url ?? '',
     title: b?.title ?? '',
-    description: b?.description ?? '',
-    notes: b?.notes ?? '',
+    description,
+    notes: (b?.notes ?? '').trim() || embeddedNotes,
     tag_names: (b?.tag_names ?? []).join(', '),
     unread: Number(b?.unread ?? 0) === 1,
     is_archived: Number(b?.is_archived ?? 0) === 1,

@@ -25,7 +25,7 @@ import { LinkBackup } from '@/components/links/LinkBackup';
 import './links/links.css';
 
 type LinksTab = 'bookmarks' | 'tags' | 'bundles' | 'settings' | 'backup';
-type BookmarkView = 'all' | 'archived' | 'unread' | 'shared';
+type BookmarkView = 'all' | 'active' | 'archived' | 'unread' | 'shared' | 'untagged';
 
 const SORT_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Added ↓' },
@@ -36,13 +36,16 @@ const SORT_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'modified_asc', label: 'Modified ↑' },
 ];
 
-// Views.
-const VIEWS: readonly BookmarkView[] = ['all', 'archived', 'unread', 'shared'];
+// Bookmark list views. `all` spans archived + active; `active` is the
+// linkding default (unarchived only).
+const VIEWS: readonly BookmarkView[] = ['active', 'archived', 'unread', 'shared', 'untagged', 'all'];
 const VIEW_LABELS: Record<BookmarkView, string> = {
-  all: 'Active',
+  all: 'All',
+  active: 'Active',
   archived: 'Archived',
   unread: 'Unread',
   shared: 'Shared',
+  untagged: 'Untagged',
 };
 
 // Append `#tag` to the search box, mirroring linkding's tag-cloud links which
@@ -109,7 +112,7 @@ export default function LinksPage({
 }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<LinksTab>('bookmarks');
-  const [view, setView] = useState<BookmarkView>('all');
+  const [view, setView] = useState<BookmarkView>('active');
   const [q, setQ] = useState('');
   const [bundle, setBundle] = useState('');
   const [order, setOrder] = useState('');
@@ -134,7 +137,7 @@ export default function LinksPage({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rawView = params.get('view');
-    if (rawView === 'archived' || rawView === 'unread' || rawView === 'shared' || rawView === 'all') {
+    if (rawView === 'all' || rawView === 'active' || rawView === 'archived' || rawView === 'unread' || rawView === 'shared' || rawView === 'untagged') {
       setView(rawView);
     }
     const rawSort = params.get('sort');
@@ -153,7 +156,7 @@ export default function LinksPage({
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (order) params.set('sort', order);
-    if (view !== 'all') params.set('view', view);
+    if (view !== 'active') params.set('view', view);
     if (bundle) params.set('bundle', bundle);
     const qs = params.toString();
     window.history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
@@ -176,7 +179,7 @@ export default function LinksPage({
     return () => window.removeEventListener('keydown', onKey);
   }, [tab]);
 
-  // Dismiss the view/search dropdowns when clicking outside them.
+  // Dismiss the view/search dropdowns on outside click or Escape.
   useEffect(() => {
     if (!viewMenuOpen && !optionsOpen) return;
     function onPointerDown(e: MouseEvent) {
@@ -186,8 +189,18 @@ export default function LinksPage({
       setViewMenuOpen(false);
       setOptionsOpen(false);
     }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setViewMenuOpen(false);
+        setOptionsOpen(false);
+      }
+    }
     document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
   }, [viewMenuOpen, optionsOpen]);
 
   const profileQuery = useQuery({
@@ -224,7 +237,10 @@ export default function LinksPage({
       listLinkBookmarks(linksFetch, {
         q: debouncedQ || undefined,
         bundle: bundle || undefined,
-        archived: view === 'archived',
+        archived: view === 'archived' ? true : view === 'all' ? 'all' : undefined,
+        unread: view === 'unread' || undefined,
+        shared: view === 'shared' || undefined,
+        untagged: view === 'untagged' || undefined,
         order: order || undefined,
         limit: pageSize,
         offset: pageParam,
@@ -253,13 +269,12 @@ export default function LinksPage({
   };
 
   const results = useMemo(() => {
-    const rows = (listQuery.data?.pages ?? []).flatMap((p) => p.results);
-    if (view === 'unread') return rows.filter((b) => Number(b.unread) === 1);
-    if (view === 'shared') return rows.filter((b) => Number(b.shared) === 1);
-    return rows;
-  }, [listQuery.data, view]);
+    // unread/shared/untagged/all filtering happens server-side; pages arrive
+    // already filtered.
+    return (listQuery.data?.pages ?? []).flatMap((p) => p.results);
+  }, [listQuery.data]);
 
-  const hasActiveFilter = Boolean(debouncedQ || bundle) || view !== 'all' || Boolean(order);
+  const hasActiveFilter = Boolean(debouncedQ || bundle) || (view !== 'active' && view !== 'all') || Boolean(order);
 
   const tags = tagsQuery.data ?? [];
   const bundles = bundlesQuery.data ?? [];
@@ -274,7 +289,10 @@ export default function LinksPage({
     const active = new Set<string>();
     const re = /#([^\s"]+)/g;
     let m: RegExpExecArray | null;
-    while ((m = re.exec(q)) !== null) active.add(m[1].toLowerCase());
+    while ((m = re.exec(q)) !== null) {
+      // Drop trailing punctuation so "#reading," still matches tag `reading`.
+      active.add(m[1].toLowerCase().replace(/[.,;:!?)\]]+$/, ''));
+    }
     return active;
   }, [q]);
 
@@ -299,7 +317,7 @@ export default function LinksPage({
   function clearFilters() {
     setQ('');
     setBundle('');
-    setView('all');
+    setView('active');
     setOrder('');
   }
 
@@ -314,7 +332,7 @@ export default function LinksPage({
     setOrder(draftOrder);
     if (draftShared === 'shared') setView('shared');
     else if (draftUnread === 'unread') setView('unread');
-    else if (view === 'shared' || view === 'unread') setView('all');
+    else if (view === 'shared' || view === 'unread') setView('active');
     setOptionsOpen(false);
   }
 
@@ -355,7 +373,9 @@ export default function LinksPage({
 
   // Open the create form, pre-filling the URL when the search box holds one.
   function openAddBookmark() {
-    setPrefillUrl(extractUrlCandidate(debouncedQ));
+    // Use the live input, not the debounced value, so a fast type-then-click
+    // still prefills the URL.
+    setPrefillUrl(extractUrlCandidate(q));
     setEditing(null);
     setModalOpen(true);
   }
@@ -386,48 +406,6 @@ export default function LinksPage({
       {tab === 'bookmarks' ? (
         <div class="links-panels">
           <div class="links-main">
-          {/* View switcher + result count sit under the search field, echoing
-              linkding where the active view drives the list heading. */}
-          <div class="links-viewbar">
-            <div class="links-views-wrap">
-              <button
-                type="button"
-                class={`btn btn-secondary small links-view-toggle ${view !== 'all' ? 'active' : ''}`}
-                onClick={() => setViewMenuOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={viewMenuOpen}
-              >
-                <span class="links-view-toggle-label">{VIEW_LABELS[view]}</span>
-                <ChevronDown size={13} class="btn-icon" />
-              </button>
-              {viewMenuOpen ? (
-                <div class="links-view-menu" role="menu">
-                  {VIEWS.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      role="menuitem"
-                      class={`tree-btn ${view === v ? 'active' : ''}`}
-                      onClick={() => {
-                        setView(v);
-                        setViewMenuOpen(false);
-                      }}
-                    >
-                      <span class="tree-label">{VIEW_LABELS[v]}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            <span class="links-count">
-              {listQuery.isLoading
-                ? 'Loading…'
-                : totalCount > 0
-                  ? `${totalCount} total${results.length < totalCount ? ` · ${results.length} shown` : ''}`
-                  : ''}
-            </span>
-          </div>
-
           <div class="links-searchrow" style={{ marginTop: 8 }}>
             <div class="search-input-wrap links-search-wrap">
               <input
@@ -527,7 +505,6 @@ export default function LinksPage({
             >
               <Pencil size={14} class="btn-icon" />
             </button>
-            <span class="spacer" />
             <button
               type="button"
               class={`btn btn-secondary small list-icon-btn ${absoluteTime ? 'active' : ''}`}
@@ -537,6 +514,47 @@ export default function LinksPage({
             >
               <Clock size={14} class="btn-icon" />
             </button>
+          </div>
+
+          {/* View switcher + result count + Add sit below the search row. */}
+          <div class="links-viewbar">
+            <div class="links-views-wrap">
+              <button
+                type="button"
+                class={`btn btn-secondary small links-view-toggle ${view !== 'active' ? 'active' : ''}`}
+                onClick={() => setViewMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={viewMenuOpen}
+              >
+                <span class="links-view-toggle-label">{VIEW_LABELS[view]}</span>
+                <ChevronDown size={13} class="btn-icon" />
+              </button>
+              {viewMenuOpen ? (
+                <div class="links-view-menu" role="menu">
+                  {VIEWS.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      role="menuitem"
+                      class={`tree-btn ${view === v ? 'active' : ''}`}
+                      onClick={() => {
+                        setView(v);
+                        setViewMenuOpen(false);
+                      }}
+                    >
+                      <span class="tree-label">{VIEW_LABELS[v]}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <span class="links-count">
+              {listQuery.isLoading
+                ? 'Loading…'
+                : totalCount > 0
+                  ? `${totalCount} total${results.length < totalCount ? ` · ${results.length} shown` : ''}`
+                  : ''}
+            </span>
             <span class="spacer" />
             <button
               type="button"
@@ -580,7 +598,7 @@ export default function LinksPage({
                     bulkMode={bulkMode}
                     selected={selected.includes(b.id)}
                     onToggle={() => toggle(b.id)}
-                    onTagClick={(tag) => setQ(`#${tag}`)}
+                    onTagClick={(tag) => setQ(addTagToQuery(q, tag))}
                     onView={() => setDetailId(b.id)}
                     onEdit={() => {
                       setEditing(b);

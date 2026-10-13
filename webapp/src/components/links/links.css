@@ -42,24 +42,6 @@
   }
 }
 
-.links-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.links-head h2 {
-  font-size: 1.05rem;
-  font-weight: 650;
-  color: var(--text);
-  margin: 0;
-}
-
-.links-head .spacer {
-  flex: 1;
-}
-
 .links-searchrow {
   display: flex;
   gap: 6px;
@@ -89,12 +71,6 @@
 /* Vault-style "+" affordance for adding a bookmark. */
 .links-add-btn {
   flex: 0 0 auto;
-}
-
-.links-views {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
 }
 
 .links-hint {
@@ -161,6 +137,7 @@
   align-items: center;
   gap: 10px;
   min-height: 28px;
+  margin-top: 8px;
 }
 
 .links-views-wrap {

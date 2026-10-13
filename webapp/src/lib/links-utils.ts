@@ -1,5 +1,24 @@
 // Small display helpers for the Links UI.
 
+export const LINKDING_NOTES_MARKER = '[linkding-notes]';
+const LINKDING_NOTES_CLOSE_MARKER = '[/linkding-notes]';
+
+// Legacy linkding HTML imports packed notes onto the end of the description
+// behind a "[linkding-notes]...[/linkding-notes]" marker pair (the Netscape
+// format has no notes field). Split it back out for display so Description
+// and Notes stay separate without needing a data migration. Mirrors linkding's
+// own parser (split on the first open marker, cut at the first close marker)
+// and src/linkding/netscape.ts on the backend.
+export function splitLinkdingNotes(raw: string): { description: string; notes: string } {
+  const text = String(raw ?? '');
+  const at = text.indexOf(LINKDING_NOTES_MARKER);
+  if (at < 0) return { description: text, notes: '' };
+  const after = text.slice(at + LINKDING_NOTES_MARKER.length);
+  const end = after.indexOf(LINKDING_NOTES_CLOSE_MARKER);
+  const notes = (end < 0 ? after : after.slice(0, end)).trim();
+  return { description: text.slice(0, at).trim(), notes };
+}
+
 export function formatLinksAbsolute(iso: string): string {
   try {
     return new Date(iso).toLocaleString();

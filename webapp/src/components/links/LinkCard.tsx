@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import type { LinkBookmark } from '@/lib/api/links';
 import { renderLinksMarkdown } from '@/lib/links-markdown';
-import { displayLinksUrl, formatLinksAbsolute, formatLinksRelative } from '@/lib/links-utils';
+import { displayLinksUrl, formatLinksAbsolute, formatLinksRelative, splitLinkdingNotes } from '@/lib/links-utils';
 
 export interface LinkCardPrefs {
   showFavicon: boolean;
@@ -47,13 +47,11 @@ export function LinkCard({
     : formatLinksRelative(bookmark.date_added);
   const tags = bookmark.tag_names ?? [];
   // Legacy linkding HTML imports packed notes onto the description behind a
-  // "[linkding-notes]" marker. Strip it for display (same self-heal as the
-  // details view); stored data is untouched.
-  const displayDescription = (() => {
-    const raw = bookmark.description ?? '';
-    const at = raw.indexOf('[linkding-notes]');
-    return at < 0 ? raw : raw.slice(0, at).trim();
-  })();
+  // "[linkding-notes]" marker. Strip it for display and fall back to the
+  // embedded notes so the Notes toggle appears even when the stored notes
+  // field is empty. Stored data is untouched.
+  const { description: displayDescription, notes: embeddedNotes } = splitLinkdingNotes(bookmark.description ?? '');
+  const effectiveNotes = (bookmark.notes ?? '').trim() || embeddedNotes;
 
   return (
     <div class={`links-item ${Number(bookmark.unread) === 1 ? 'unread' : ''}`}>
@@ -95,11 +93,15 @@ export function LinkCard({
             {displayDescription ? <span>{displayDescription}</span> : null}
           </div>
         ) : null}
-        {bookmark.notes && (notesOpen || prefs.permanentNotes) ? (
-          <div
-            class="links-notes"
-            dangerouslySetInnerHTML={{ __html: renderLinksMarkdown(bookmark.notes) }}
-          />
+        {notesOpen || prefs.permanentNotes ? (
+          effectiveNotes ? (
+            <div
+              class="links-notes"
+              dangerouslySetInnerHTML={{ __html: renderLinksMarkdown(effectiveNotes) }}
+            />
+          ) : (
+            <div class="links-notes links-notes-empty">No notes yet.</div>
+          )
         ) : null}
         <div class="links-actions">
           {bookmark.web_archive_snapshot_url ? (
@@ -128,7 +130,7 @@ export function LinkCard({
           {bookmark.shared ? (
             <button type="button" class="links-action" onClick={onToggleShared}>Unshare</button>
           ) : null}
-          {bookmark.notes && !prefs.permanentNotes ? (
+          {!prefs.permanentNotes ? (
             <>
               <span class="links-sep" aria-hidden="true">|</span>
               <button type="button" class="links-action" onClick={() => setNotesOpen((v) => !v)}>

@@ -1,26 +1,11 @@
 import type { LinkBookmark } from '@/lib/api/links';
 import { renderLinksMarkdown } from '@/lib/links-markdown';
-import { formatLinksAbsolute, formatLinksRelative } from '@/lib/links-utils';
+import { formatLinksAbsolute, formatLinksRelative, splitLinkdingNotes } from '@/lib/links-utils';
 
 export interface LinkDetailsPrefs {
   showFavicon: boolean;
   absoluteTime: boolean;
   linkTarget: string;
-}
-
-// linkding's HTML export packs notes onto the end of the description behind a
-// "[linkding-notes]" marker. Older imports kept that raw text in `description`,
-// so strip it for display to keep Description and Notes visually separate
-// without needing a data migration. The real notes field is unaffected.
-const LINKDING_NOTES_MARKER = '[linkding-notes]';
-
-function cleanDescription(raw: string): { description: string; embeddedNotes: string } {
-  const at = raw.indexOf(LINKDING_NOTES_MARKER);
-  if (at < 0) return { description: raw, embeddedNotes: '' };
-  return {
-    description: raw.slice(0, at).trim(),
-    embeddedNotes: raw.slice(at + LINKDING_NOTES_MARKER.length).trim(),
-  };
 }
 
 function statusFlags(b: LinkBookmark): string[] {
@@ -56,7 +41,7 @@ export function LinkDetails({
   onClose: () => void;
 }) {
   const tags = bookmark.tag_names ?? [];
-  const { description, embeddedNotes } = cleanDescription(bookmark.description ?? '');
+  const { description, notes: embeddedNotes } = splitLinkdingNotes(bookmark.description ?? '');
   // Fall back to the notes still embedded in the description for legacy imports.
   const notes = (bookmark.notes ?? '').trim() || embeddedNotes;
   const flags = statusFlags(bookmark);

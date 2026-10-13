@@ -112,7 +112,11 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
             class="hidden"
             type="file"
             accept="application/json,.json"
-            onChange={(e) => void onJsonFile((e.target as HTMLInputElement).files?.[0])}
+            onChange={(e) => {
+              const input = e.target as HTMLInputElement;
+              void onJsonFile(input.files?.[0]);
+              input.value = '';
+            }}
           />
           <button class="btn btn-secondary small" onClick={() => jsonRef.current?.click()}>
             Choose JSON backup…
@@ -123,7 +127,11 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
             class="hidden"
             type="file"
             accept=".html,.htm,text/html"
-            onChange={(e) => void onHtmlFile((e.target as HTMLInputElement).files?.[0])}
+            onChange={(e) => {
+              const input = e.target as HTMLInputElement;
+              void onHtmlFile(input.files?.[0]);
+              input.value = '';
+            }}
           />
           <button class="btn btn-secondary small" onClick={() => htmlRef.current?.click()}>
             Choose Netscape HTML…

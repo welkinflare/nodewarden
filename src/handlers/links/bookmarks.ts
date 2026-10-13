@@ -86,26 +86,32 @@ export function waybackSnapshotUrl(url: string, now: Date = new Date()): string 
 }
 
 // The links UI renders each favicon as an <img>, and the app CSP allows images
-// only from 'self' and data:. Absolute favicon URLs (scraped page icons and the
-// Google s2 fallback) are therefore blocked in the browser. NodeWarden already
-// exposes a same-origin website-icon proxy at /icons/{host}/icon.png — the same
-// one the vault uses — so resolve every bookmark icon through it at
-// serialization time. Doing this on read fixes existing rows with no migration,
-// and keeps the stored favicon_url untouched for backup/export fidelity. The
-// "no fallback=404" form returns the default globe icon instead of a 404, so
-// bookmarks without a known icon render cleanly. The UI still gates rendering on
-// the enable_favicons profile preference.
-function sameOriginFaviconUrl(url: string): string {
+// only from 'self' and data:. Absolute third-party favicon URLs (scraped page
+// icons and the Google s2 fallback) are therefore blocked in the browser.
+// NodeWarden already exposes a same-origin website-icon proxy at
+// /icons/{host}/icon.png — the same one the vault uses — so resolve every
+// bookmark icon through it at serialization time. Doing this on read fixes
+// existing rows with no migration, and keeps the stored favicon_url untouched
+// for backup/export fidelity. The URL is absolute (request origin) so
+// third-party API/token clients can resolve it too. The "no fallback=404"
+// form returns the default globe icon instead of a 404, so bookmarks without
+// a known icon render cleanly. The UI still gates rendering on the
+// enable_favicons profile preference.
+export function sameOriginFaviconUrl(url: string, origin: string): string {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    if (!host) return '';
-    return `/icons/${encodeURIComponent(host)}/icon.png`;
+    if (!host || !origin) return '';
+    return `${origin.replace(/\/+$/, '')}/icons/${encodeURIComponent(host)}/icon.png`;
   } catch {
     return '';
   }
 }
 
-export function serializeBookmark(row: LinkBookmarkRow, tagNames: string[]): Record<string, unknown> {
+export function serializeBookmark(
+  row: LinkBookmarkRow,
+  tagNames: string[],
+  origin: string
+): Record<string, unknown> {
   return {
     id: row.id,
     url: row.url,
@@ -117,7 +123,7 @@ export function serializeBookmark(row: LinkBookmarkRow, tagNames: string[]): Rec
     is_archived: row.is_archived,
     shared: row.shared,
     web_archive_snapshot_url: row.web_archive_snapshot_url,
-    favicon_url: sameOriginFaviconUrl(row.url),
+    favicon_url: origin ? sameOriginFaviconUrl(row.url, origin) : row.favicon_url,
     preview_image_url: row.preview_image_url,
     date_added: row.date_added,
     date_modified: row.date_modified,
@@ -170,15 +176,16 @@ function buildPageUrls(
 }
 
 // Shared linkding list core: q/limit<=100/offset/modified_since/
-// added_since/bundle/order with user isolation. `archived` selects
-// is_archived=0 vs 1; both endpoints share filters and {count,next,
+// added_since/bundle/order/unread/shared/untagged with user isolation.
+// `archived` selects is_archived=0 vs 1; `?archived=all` lists everything
+// (the "All" view); both endpoints share filters and {count,next,
 // previous,results} shape.
 async function listBookmarksWithFilters(
   req: Request,
   env: Env,
   userId: string,
   url: URL,
-  archived: boolean
+  defaultArchived: boolean
 ): Promise<Response> {
   void req;
   const store = new LinksStorage(env.DB);
@@ -193,11 +200,15 @@ async function listBookmarksWithFilters(
   const offset = Math.max(Number.isFinite(rawOffset) ? rawOffset : 0, 0);
   const bundle = await resolveBundleFilter(store, userId, url);
   const order = url.searchParams.get('order') ?? url.searchParams.get('sort') ?? null;
+  const archived = url.searchParams.get('archived') === 'all' ? null : defaultArchived;
   const filters = {
     modifiedSince: url.searchParams.get('modified_since'),
     addedSince: url.searchParams.get('added_since'),
     bundle,
     order,
+    unread: url.searchParams.get('unread') === '1',
+    shared: url.searchParams.get('shared') === '1',
+    untagged: url.searchParams.get('untagged') === '1',
   };
   const [count, rows] = await Promise.all([
     store.countBookmarks(userId, plan, archived, filters),
@@ -212,7 +223,7 @@ async function listBookmarksWithFilters(
     count,
     next,
     previous,
-    results: rows.map((row) => serializeBookmark(row, tagsByBookmark.get(row.id) ?? [])),
+    results: rows.map((row) => serializeBookmark(row, tagsByBookmark.get(row.id) ?? [], url.origin)),
   });
 }
 
@@ -257,7 +268,7 @@ export async function handleCheckBookmark(
   if (existing) {
     const tagNames =
       (await store.getTagNamesForBookmarks(userId, [existing.id])).get(existing.id) ?? [];
-    bookmark = serializeBookmark(existing, tagNames);
+    bookmark = serializeBookmark(existing, tagNames, url.origin);
   }
   const scraped = await scrapeMetadata(rawUrl, env.ATTACHMENTS_KV ?? undefined);
   const metadata = {
@@ -298,7 +309,7 @@ export async function handleCreateBookmark(
   // Upsert: same user + same normalized URL updates in place, same id.
   const existing = await store.getBookmarkByNormalized(userId, normalized);
   if (existing) {
-    return applyUpsertUpdate(store, userId, existing, body, rawUrl, now, sharingEnabled, autoRules);
+    return applyUpsertUpdate(store, userId, existing, body, rawUrl, now, sharingEnabled, autoRules, new URL(request.url).origin);
   }
 
   // Create. Metadata is scraped (fail-soft) only when the client did not
@@ -347,11 +358,11 @@ export async function handleCreateBookmark(
     if (!isLinksUniqueViolation(err)) throw err;
     const raced = await store.getBookmarkByNormalized(userId, normalized);
     if (!raced) throw err;
-    return applyUpsertUpdate(store, userId, raced, body, rawUrl, now, sharingEnabled, autoRules);
+    return applyUpsertUpdate(store, userId, raced, body, rawUrl, now, sharingEnabled, autoRules, new URL(request.url).origin);
   }
   const tags = await store.ensureTags(userId, tagNames, now);
   await store.setBookmarkTagLinks(userId, row.id, tags.map((t) => t.id));
-  return jsonResponse(serializeBookmark(row, tags.map((t) => t.name)), 201);
+  return jsonResponse(serializeBookmark(row, tags.map((t) => t.name), new URL(request.url).origin), 201);
 }
 
 // Shared upsert-update for POST creates: applies posted fields onto the
@@ -364,7 +375,8 @@ async function applyUpsertUpdate(
   rawUrl: string,
   now: string,
   sharingEnabled: boolean,
-  autoRules: string
+  autoRules: string,
+  origin: string
 ): Promise<Response> {
   const patch: Record<string, unknown> = { url: rawUrl, date_modified: now };
   for (const field of ['title', 'description', 'notes'] as const) {
@@ -390,7 +402,7 @@ async function applyUpsertUpdate(
   }
   const tags = await store.ensureTags(userId, tagNames, now);
   await store.setBookmarkTagLinks(userId, updated.id, tags.map((t) => t.id));
-  return jsonResponse(serializeBookmark(updated, tags.map((t) => t.name)), 200);
+  return jsonResponse(serializeBookmark(updated, tags.map((t) => t.name), origin), 200);
 }
 
 export async function handleGetBookmark(
@@ -399,12 +411,11 @@ export async function handleGetBookmark(
   userId: string,
   id: string
 ): Promise<Response> {
-  void request;
   const store = new LinksStorage(env.DB);
   const row = await store.getBookmarkById(userId, id);
   if (!row) return jsonResponse({ detail: NOT_FOUND }, 404);
   const tagNames = (await store.getTagNamesForBookmarks(userId, [row.id])).get(row.id) ?? [];
-  return jsonResponse(serializeBookmark(row, tagNames));
+  return jsonResponse(serializeBookmark(row, tagNames, new URL(request.url).origin));
 }
 
 export async function handleUpdateBookmark(
@@ -470,7 +481,7 @@ export async function handleUpdateBookmark(
   }
   const tags = await store.ensureTags(userId, tagNames, now);
   await store.setBookmarkTagLinks(userId, id, tags.map((t) => t.id));
-  return jsonResponse(serializeBookmark(updated, tags.map((t) => t.name)), 200);
+  return jsonResponse(serializeBookmark(updated, tags.map((t) => t.name), new URL(request.url).origin), 200);
 }
 
 export async function handleDeleteBookmark(
@@ -492,7 +503,6 @@ export async function handleArchiveBookmark(
   id: string,
   archived: boolean
 ): Promise<Response> {
-  void request;
   const store = new LinksStorage(env.DB);
   const updated = await store.updateBookmark(userId, id, {
     is_archived: archived ? 1 : 0,
@@ -502,7 +512,7 @@ export async function handleArchiveBookmark(
   if (!updated) return jsonResponse({ detail: NOT_FOUND }, 404);
   const tagNames =
     (await store.getTagNamesForBookmarks(userId, [updated.id])).get(updated.id) ?? [];
-  return jsonResponse(serializeBookmark(updated, tagNames));
+  return jsonResponse(serializeBookmark(updated, tagNames, new URL(request.url).origin));
 }
 
 const BULK_ACTIONS = new Set([

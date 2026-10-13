@@ -120,6 +120,9 @@ export interface LinksBookmarkListFilters {
   addedSince?: string | null;
   bundle?: LinkBundleRow | null;
   order?: string | null;
+  unread?: boolean | null;
+  shared?: boolean | null;
+  untagged?: boolean | null;
 }
 
 // Rewrites table names emitted by src/linkding/search.ts (`bookmarks`,
@@ -215,7 +218,7 @@ function splitBundleTags(raw: string): string[] {
 }
 
 // Builds the extra WHERE fragment for modified_since / added_since /
-// bundle. Bundle semantics mirror linkding queries._filter_bundle: text
+// bundle / unread / shared / untagged. Bundle semantics mirror linkding queries._filter_bundle: text
 // terms ANDed, any_tags ORed, all_tags each ANDed, excluded_tags NOTed,
 // filter_unread/shared (0=all, 1=only). Exported for unit testing.
 export function buildLinksListFilterClause(
@@ -292,6 +295,13 @@ export function buildLinksListFilterClause(
     if (bparts.length > 0) {
       parts.push(`(${bparts.join(' AND ')})`);
     }
+  }
+  if (filters.unread) parts.push(`${b}.unread = 1`);
+  if (filters.shared) parts.push(`${b}.shared = 1`);
+  if (filters.untagged) {
+    parts.push(
+      `NOT EXISTS (SELECT 1 FROM link_bookmark_tags bt_u WHERE bt_u.bookmark_id = ${b}.id)`
+    );
   }
   if (parts.length === 0) return { where: '', params: [] };
   return { where: ` AND (${parts.join(' AND ')})`, params };
@@ -540,18 +550,24 @@ export class LinksStorage {
   async countBookmarks(
     userId: string,
     plan: SqlPlan,
-    archived: boolean,
+    archived: boolean | null,
     filters?: LinksBookmarkListFilters
   ): Promise<number> {
     const where = remapSearchTables(plan.where);
     const joins = remapSearchTables(plan.joins);
     const extra = buildLinksListFilterClause(filters);
+    const binds: unknown[] = [userId];
+    // `archived: null` lists everything (the "All" view); otherwise select
+    // one side of the is_archived flag.
+    const archivedClause = archived === null ? '' : ' AND link_bookmarks.is_archived = ?';
+    if (archived !== null) binds.push(archived ? 1 : 0);
+    binds.push(...plan.params, ...extra.params);
     const row = await this.db
       .prepare(
         `SELECT COUNT(*) AS n FROM link_bookmarks ${joins} ` +
-          `WHERE link_bookmarks.user_id = ? AND link_bookmarks.is_archived = ? AND (${where})${extra.where}`
+          `WHERE link_bookmarks.user_id = ?${archivedClause} AND (${where})${extra.where}`
       )
-      .bind(userId, archived ? 1 : 0, ...plan.params, ...extra.params)
+      .bind(...binds)
       .first<{ n: number }>();
     return row ? Number(row.n) : 0;
   }
@@ -559,26 +575,23 @@ export class LinksStorage {
   async searchBookmarks(
     userId: string,
     plan: SqlPlan,
-    opts: { limit: number; offset: number; archived: boolean } & LinksBookmarkListFilters
+    opts: { limit: number; offset: number; archived: boolean | null } & LinksBookmarkListFilters
   ): Promise<LinkBookmarkRow[]> {
     const where = remapSearchTables(plan.where);
     const joins = remapSearchTables(plan.joins);
     const extra = buildLinksListFilterClause(opts);
     const orderBy = resolveLinksBookmarkOrderBy(opts.order);
+    const binds: unknown[] = [userId];
+    const archivedClause = opts.archived === null ? '' : ' AND link_bookmarks.is_archived = ?';
+    if (opts.archived !== null) binds.push(opts.archived ? 1 : 0);
+    binds.push(...plan.params, ...extra.params, opts.limit, opts.offset);
     const { results } = await this.db
       .prepare(
         `SELECT link_bookmarks.* FROM link_bookmarks ${joins} ` +
-          `WHERE link_bookmarks.user_id = ? AND link_bookmarks.is_archived = ? AND (${where})${extra.where} ` +
+          `WHERE link_bookmarks.user_id = ?${archivedClause} AND (${where})${extra.where} ` +
           `ORDER BY ${orderBy} LIMIT ? OFFSET ?`
       )
-      .bind(
-        userId,
-        opts.archived ? 1 : 0,
-        ...plan.params,
-        ...extra.params,
-        opts.limit,
-        opts.offset
-      )
+      .bind(...binds)
       .all<LinkBookmarkRow>();
     return (results ?? []) as LinkBookmarkRow[];
   }

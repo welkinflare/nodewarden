@@ -115,7 +115,10 @@ export interface ListLinksParams {
   offset?: number;
   bundle?: string;
   order?: string;
-  archived?: boolean;
+  archived?: boolean | 'all';
+  unread?: boolean;
+  shared?: boolean;
+  untagged?: boolean;
 }
 
 export interface ListLinksResult {
@@ -132,7 +135,12 @@ export async function listLinkBookmarks(authedFetch: AuthedFetch, params: ListLi
   if (params.offset !== undefined) search.set('offset', String(params.offset));
   if (params.bundle) search.set('bundle', params.bundle);
   if (params.order) search.set('order', params.order);
-  const base = params.archived ? '/api/links/bookmarks/archived' : '/api/links/bookmarks';
+  if (params.unread) search.set('unread', '1');
+  if (params.shared) search.set('shared', '1');
+  if (params.untagged) search.set('untagged', '1');
+  const useArchivedEndpoint = params.archived === true;
+  if (params.archived === 'all') search.set('archived', 'all');
+  const base = useArchivedEndpoint ? '/api/links/bookmarks/archived' : '/api/links/bookmarks';
   const data = await linksGet<Record<string, unknown>>(authedFetch, search.toString() ? `${base}?${search}` : base, 'Load bookmarks failed');
   const results = Array.isArray(data['results']) ? (data['results'] as LinkBookmark[]) : [];
   return {
