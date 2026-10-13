@@ -31,7 +31,14 @@ type BackupTableName =
   | 'webauthn_credentials'
   | 'folders'
   | 'ciphers'
-  | 'attachments';
+  | 'attachments'
+  | 'link_bookmarks'
+  | 'link_tags'
+  | 'link_bookmark_tags'
+  | 'link_bundles'
+  | 'link_api_tokens'
+  | 'link_feed_tokens'
+  | 'link_profile';
 
 const BACKUP_TABLES: BackupTableName[] = [
   'config',
@@ -42,6 +49,13 @@ const BACKUP_TABLES: BackupTableName[] = [
   'folders',
   'ciphers',
   'attachments',
+  'link_bookmarks',
+  'link_tags',
+  'link_bookmark_tags',
+  'link_bundles',
+  'link_api_tokens',
+  'link_feed_tokens',
+  'link_profile',
 ];
 
 function shadowTableName(table: BackupTableName): string {
@@ -60,6 +74,13 @@ export interface BackupImportResultBody {
     ciphers: number;
     attachments: number;
     attachmentFiles: number;
+    linkBookmarks: number;
+    linkTags: number;
+    linkBookmarkTags: number;
+    linkBundles: number;
+    linkApiTokens: number;
+    linkFeedTokens: number;
+    linkProfiles: number;
   };
   skipped: {
     reason: string | null;
@@ -164,14 +185,29 @@ async function ensureImportTargetIsFresh(db: D1Database): Promise<void> {
     db.prepare('SELECT COUNT(*) AS count FROM attachments').first<{ count: number }>(),
     db.prepare('SELECT COUNT(*) AS count FROM sends').first<{ count: number }>(),
   ]);
-  const total = counts.reduce((sum, row) => sum + Number(row?.count || 0), 0);
+  // link_bookmarks may not exist on installs predating the Links migration.
+  let linkCount = 0;
+  try {
+    const row = await db.prepare('SELECT COUNT(*) AS count FROM link_bookmarks').first<{ count: number }>();
+    linkCount = Number(row?.count || 0);
+  } catch {
+    linkCount = 0;
+  }
+  const total = counts.reduce((sum, row) => sum + Number(row?.count || 0), 0) + linkCount;
   if (total > 0) {
-    throw new Error('Backup import requires a fresh instance with no vault or send data');
+    throw new Error('Backup import requires a fresh instance with no vault, send, or links data');
   }
 }
 
 function buildResetImportTargetStatements(db: D1Database): D1PreparedStatement[] {
   return [
+    'DELETE FROM link_bookmark_tags',
+    'DELETE FROM link_bookmarks',
+    'DELETE FROM link_tags',
+    'DELETE FROM link_bundles',
+    'DELETE FROM link_api_tokens',
+    'DELETE FROM link_feed_tokens',
+    'DELETE FROM link_profile',
     'DELETE FROM attachments',
     'DELETE FROM ciphers',
     'DELETE FROM folders',
@@ -317,6 +353,13 @@ async function importPreparedBackupRows(db: D1Database, payload: BackupPayload['
       archived_at: row.archived_at ?? null,
     })),
     attachments: cloneRows(payload.attachments || []),
+    link_bookmarks: cloneRows(payload.link_bookmarks || []),
+    link_tags: cloneRows(payload.link_tags || []),
+    link_bookmark_tags: cloneRows(payload.link_bookmark_tags || []),
+    link_bundles: cloneRows(payload.link_bundles || []),
+    link_api_tokens: cloneRows(payload.link_api_tokens || []),
+    link_feed_tokens: cloneRows(payload.link_feed_tokens || []),
+    link_profile: cloneRows(payload.link_profile || []),
   };
   await importBackupRows(db, preparedDb, true);
   return preparedDb;
@@ -689,6 +732,56 @@ async function importBackupRows(db: D1Database, payload: BackupPayload['db'], us
     tableName('attachments'),
     buildInsertStatements(db, tableName('attachments'), ['id', 'cipher_id', 'file_name', 'size', 'size_name', 'key'], payload.attachments || [])
   );
+  await runInsertBatch(
+    db,
+    tableName('link_bookmarks'),
+    buildInsertStatements(
+      db,
+      tableName('link_bookmarks'),
+      ['id', 'user_id', 'url', 'url_normalized', 'title', 'description', 'notes', 'unread', 'is_archived', 'shared', 'web_archive_snapshot_url', 'favicon_url', 'preview_image_url', 'date_added', 'date_modified', 'date_accessed'],
+      payload.link_bookmarks || []
+    )
+  );
+  await runInsertBatch(
+    db,
+    tableName('link_tags'),
+    buildInsertStatements(db, tableName('link_tags'), ['id', 'user_id', 'name', 'date_added'], payload.link_tags || [])
+  );
+  await runInsertBatch(
+    db,
+    tableName('link_bookmark_tags'),
+    buildInsertStatements(db, tableName('link_bookmark_tags'), ['bookmark_id', 'tag_id'], payload.link_bookmark_tags || [])
+  );
+  await runInsertBatch(
+    db,
+    tableName('link_bundles'),
+    buildInsertStatements(
+      db,
+      tableName('link_bundles'),
+      ['id', 'user_id', 'name', 'search', 'any_tags', 'all_tags', 'excluded_tags', 'filter_unread', 'filter_shared', '"order"', 'date_created', 'date_modified'],
+      payload.link_bundles || []
+    )
+  );
+  await runInsertBatch(
+    db,
+    tableName('link_api_tokens'),
+    buildInsertStatements(db, tableName('link_api_tokens'), ['id', 'user_id', 'key', 'name', 'created'], payload.link_api_tokens || [])
+  );
+  await runInsertBatch(
+    db,
+    tableName('link_feed_tokens'),
+    buildInsertStatements(db, tableName('link_feed_tokens'), ['key', 'user_id', 'created'], payload.link_feed_tokens || [])
+  );
+  await runInsertBatch(
+    db,
+    tableName('link_profile'),
+    buildInsertStatements(
+      db,
+      tableName('link_profile'),
+      ['user_id', 'theme', 'bookmark_date_display', 'bookmark_link_target', 'web_archive_integration', 'tag_search', 'enable_sharing', 'enable_public_sharing', 'enable_favicons', 'display_url', 'permanent_notes', 'search_preferences', 'auto_tagging_rules', 'items_per_page', 'legacy_search', 'custom_css'],
+      payload.link_profile || []
+    )
+  );
 }
 
 export async function importBackupArchiveBytes(
@@ -741,6 +834,13 @@ export async function importBackupArchiveBytes(
       folders: (db.folders || []).length,
       ciphers: (db.ciphers || []).length,
       attachments: (db.attachments || []).length,
+      link_bookmarks: (db.link_bookmarks || []).length,
+      link_tags: (db.link_tags || []).length,
+      link_bookmark_tags: (db.link_bookmark_tags || []).length,
+      link_bundles: (db.link_bundles || []).length,
+      link_api_tokens: (db.link_api_tokens || []).length,
+      link_feed_tokens: (db.link_feed_tokens || []).length,
+      link_profile: (db.link_profile || []).length,
     });
 
     await progress?.({
@@ -764,6 +864,13 @@ export async function importBackupArchiveBytes(
       folders: (db.folders || []).length,
       ciphers: (db.ciphers || []).length,
       attachments: restored.restoredAttachments.length,
+      link_bookmarks: (db.link_bookmarks || []).length,
+      link_tags: (db.link_tags || []).length,
+      link_bookmark_tags: (db.link_bookmark_tags || []).length,
+      link_bundles: (db.link_bundles || []).length,
+      link_api_tokens: (db.link_api_tokens || []).length,
+      link_feed_tokens: (db.link_feed_tokens || []).length,
+      link_profile: (db.link_profile || []).length,
     });
     await progress?.({
       source: 'local',
@@ -805,6 +912,13 @@ export async function importBackupArchiveBytes(
           folders: (db.folders || []).length,
           ciphers: (db.ciphers || []).length,
           attachments: restored.restoredAttachments.length,
+          linkBookmarks: (db.link_bookmarks || []).length,
+          linkTags: (db.link_tags || []).length,
+          linkBookmarkTags: (db.link_bookmark_tags || []).length,
+          linkBundles: (db.link_bundles || []).length,
+          linkApiTokens: (db.link_api_tokens || []).length,
+          linkFeedTokens: (db.link_feed_tokens || []).length,
+          linkProfiles: (db.link_profile || []).length,
           attachmentFiles: restored.imported,
         },
         skipped: {
@@ -882,6 +996,13 @@ export async function importRemoteBackupArchiveBytes(
       folders: (db.folders || []).length,
       ciphers: (db.ciphers || []).length,
       attachments: (db.attachments || []).length,
+      link_bookmarks: (db.link_bookmarks || []).length,
+      link_tags: (db.link_tags || []).length,
+      link_bookmark_tags: (db.link_bookmark_tags || []).length,
+      link_bundles: (db.link_bundles || []).length,
+      link_api_tokens: (db.link_api_tokens || []).length,
+      link_feed_tokens: (db.link_feed_tokens || []).length,
+      link_profile: (db.link_profile || []).length,
     });
 
     await progress?.({
@@ -905,6 +1026,13 @@ export async function importRemoteBackupArchiveBytes(
       folders: (db.folders || []).length,
       ciphers: (db.ciphers || []).length,
       attachments: restored.restoredAttachments.length,
+      link_bookmarks: (db.link_bookmarks || []).length,
+      link_tags: (db.link_tags || []).length,
+      link_bookmark_tags: (db.link_bookmark_tags || []).length,
+      link_bundles: (db.link_bundles || []).length,
+      link_api_tokens: (db.link_api_tokens || []).length,
+      link_feed_tokens: (db.link_feed_tokens || []).length,
+      link_profile: (db.link_profile || []).length,
     });
     await progress?.({
       source: 'remote',
@@ -952,6 +1080,13 @@ export async function importRemoteBackupArchiveBytes(
           folders: (db.folders || []).length,
           ciphers: (db.ciphers || []).length,
           attachments: restored.restoredAttachments.length,
+          linkBookmarks: (db.link_bookmarks || []).length,
+          linkTags: (db.link_tags || []).length,
+          linkBookmarkTags: (db.link_bookmark_tags || []).length,
+          linkBundles: (db.link_bundles || []).length,
+          linkApiTokens: (db.link_api_tokens || []).length,
+          linkFeedTokens: (db.link_feed_tokens || []).length,
+          linkProfiles: (db.link_profile || []).length,
           attachmentFiles: restored.imported,
         },
         skipped: {

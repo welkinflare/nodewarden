@@ -72,6 +72,13 @@ export interface BackupPayload {
     ciphers: SqlRow[];
     attachments: SqlRow[];
     webauthn_credentials?: SqlRow[];
+    link_bookmarks?: SqlRow[];
+    link_tags?: SqlRow[];
+    link_bookmark_tags?: SqlRow[];
+    link_bundles?: SqlRow[];
+    link_api_tokens?: SqlRow[];
+    link_feed_tokens?: SqlRow[];
+    link_profile?: SqlRow[];
   };
 }
 
@@ -278,6 +285,13 @@ function normalizeParsedBackupDb(value: unknown): BackupPayload['db'] {
     ciphers: source.ciphers as SqlRow[],
     attachments: source.attachments as SqlRow[],
     webauthn_credentials: source.webauthn_credentials as SqlRow[] | undefined,
+    link_bookmarks: source.link_bookmarks as SqlRow[] | undefined,
+    link_tags: source.link_tags as SqlRow[] | undefined,
+    link_bookmark_tags: source.link_bookmark_tags as SqlRow[] | undefined,
+    link_bundles: source.link_bundles as SqlRow[] | undefined,
+    link_api_tokens: source.link_api_tokens as SqlRow[] | undefined,
+    link_feed_tokens: source.link_feed_tokens as SqlRow[] | undefined,
+    link_profile: source.link_profile as SqlRow[] | undefined,
   };
 }
 
@@ -472,6 +486,77 @@ export function validateBackupPayloadContents(
     accountPasskeyCredentialIds.add(credentialId);
   }
 
+  const linkBookmarkRows = ensureRowArray(payload.db.link_bookmarks || [], 'link_bookmarks');
+  const linkTagRows = ensureRowArray(payload.db.link_tags || [], 'link_tags');
+  const linkBookmarkTagRows = ensureRowArray(payload.db.link_bookmark_tags || [], 'link_bookmark_tags');
+  const linkBundleRows = ensureRowArray(payload.db.link_bundles || [], 'link_bundles');
+  const linkApiTokenRows = ensureRowArray(payload.db.link_api_tokens || [], 'link_api_tokens');
+  const linkFeedTokenRows = ensureRowArray(payload.db.link_feed_tokens || [], 'link_feed_tokens');
+  const linkProfileRows = ensureRowArray(payload.db.link_profile || [], 'link_profile');
+
+  const linkBookmarkIds = new Set<string>();
+  for (const row of linkBookmarkRows) {
+    const id = String(row.id || '').trim();
+    const userId = String(row.user_id || '').trim();
+    if (!id || !userIds.has(userId)) throw new Error('Backup archive contains an invalid link bookmark row');
+    if (linkBookmarkIds.has(id)) throw new Error(`Backup archive contains duplicate link bookmark id: ${id}`);
+    linkBookmarkIds.add(id);
+  }
+
+  const linkTagIds = new Set<string>();
+  for (const row of linkTagRows) {
+    const id = String(row.id || '').trim();
+    const userId = String(row.user_id || '').trim();
+    if (!id || !userIds.has(userId)) throw new Error('Backup archive contains an invalid link tag row');
+    if (linkTagIds.has(id)) throw new Error(`Backup archive contains duplicate link tag id: ${id}`);
+    linkTagIds.add(id);
+  }
+
+  for (const row of linkBookmarkTagRows) {
+    const bookmarkId = String(row.bookmark_id || '').trim();
+    const tagId = String(row.tag_id || '').trim();
+    if (!bookmarkId || !tagId || !linkBookmarkIds.has(bookmarkId) || !linkTagIds.has(tagId)) {
+      throw new Error('Backup archive contains an invalid link bookmark-tag row');
+    }
+  }
+
+  const linkBundleIds = new Set<string>();
+  for (const row of linkBundleRows) {
+    const id = String(row.id || '').trim();
+    const userId = String(row.user_id || '').trim();
+    if (!id || !userIds.has(userId)) throw new Error('Backup archive contains an invalid link bundle row');
+    if (linkBundleIds.has(id)) throw new Error(`Backup archive contains duplicate link bundle id: ${id}`);
+    linkBundleIds.add(id);
+  }
+
+  const linkApiTokenKeys = new Set<string>();
+  for (const row of linkApiTokenRows) {
+    const key = String(row.key || '').trim();
+    const userId = String(row.user_id || '').trim();
+    if (!key || !userIds.has(userId)) throw new Error('Backup archive contains an invalid link API token row');
+    if (linkApiTokenKeys.has(key)) throw new Error('Backup archive contains a duplicate link API token');
+    linkApiTokenKeys.add(key);
+  }
+
+  const linkFeedTokenKeys = new Set<string>();
+  for (const row of linkFeedTokenRows) {
+    const key = String(row.key || '').trim();
+    const userId = String(row.user_id || '').trim();
+    if (!key || !userIds.has(userId)) throw new Error('Backup archive contains an invalid link feed token row');
+    if (linkFeedTokenKeys.has(key)) throw new Error('Backup archive contains a duplicate link feed token');
+    linkFeedTokenKeys.add(key);
+  }
+
+  const linkProfileUserIds = new Set<string>();
+  for (const row of linkProfileRows) {
+    const userId = String(row.user_id || '').trim();
+    if (!userId || !userIds.has(userId)) throw new Error('Backup archive contains link profile for an unknown user');
+    if (linkProfileUserIds.has(userId)) {
+      throw new Error(`Backup archive contains duplicate link profile for user: ${userId}`);
+    }
+    linkProfileUserIds.add(userId);
+  }
+
 }
 
 export async function buildBackupArchive(
@@ -490,7 +575,7 @@ export async function buildBackupArchive(
     includeAttachments,
   });
   const encoder = new TextEncoder();
-  const [configRows, userRows, domainSettingsRows, revisionRows, folderRows, cipherRows, attachmentRows, accountPasskeyRows] = await Promise.all([
+  const [configRows, userRows, domainSettingsRows, revisionRows, folderRows, cipherRows, attachmentRows, accountPasskeyRows, linkBookmarkRows, linkTagRows, linkBookmarkTagRows, linkBundleRows, linkApiTokenRows, linkFeedTokenRows, linkProfileRows] = await Promise.all([
     queryRows(env.DB, 'SELECT key, value FROM config ORDER BY key ASC'),
     queryRows(env.DB, 'SELECT id, email, name, master_password_hint, master_password_hash, key, private_key, public_key, kdf_type, kdf_iterations, kdf_memory, kdf_parallelism, security_stamp, role, status, verify_devices, totp_secret, totp_recovery_code, yubikey_key1, yubikey_key2, yubikey_key3, yubikey_key4, yubikey_key5, yubikey_nfc, created_at, updated_at FROM users ORDER BY created_at ASC'),
     queryRows(env.DB, 'SELECT user_id, equivalent_domains, custom_equivalent_domains, excluded_global_equivalent_domains, updated_at FROM domain_settings ORDER BY user_id ASC'),
@@ -499,6 +584,13 @@ export async function buildBackupArchive(
     queryRows(env.DB, 'SELECT id, user_id, type, folder_id, name, notes, favorite, data, reprompt, key, created_at, updated_at, archived_at, deleted_at FROM ciphers ORDER BY created_at ASC'),
     queryRows(env.DB, 'SELECT id, cipher_id, file_name, size, size_name, key FROM attachments ORDER BY cipher_id ASC, id ASC'),
     queryRows(env.DB, 'SELECT id, user_id, purpose, name, public_key, credential_id, counter, type, aa_guid, transports, encrypted_user_key, encrypted_public_key, encrypted_private_key, supports_prf, created_at, updated_at FROM webauthn_credentials ORDER BY created_at ASC'),
+    queryRows(env.DB, 'SELECT id, user_id, url, url_normalized, title, description, notes, unread, is_archived, shared, web_archive_snapshot_url, favicon_url, preview_image_url, date_added, date_modified, date_accessed FROM link_bookmarks ORDER BY date_added ASC'),
+    queryRows(env.DB, 'SELECT id, user_id, name, date_added FROM link_tags ORDER BY date_added ASC'),
+    queryRows(env.DB, 'SELECT bookmark_id, tag_id FROM link_bookmark_tags ORDER BY bookmark_id ASC, tag_id ASC'),
+    queryRows(env.DB, 'SELECT id, user_id, name, search, any_tags, all_tags, excluded_tags, filter_unread, filter_shared, "order", date_created, date_modified FROM link_bundles ORDER BY date_created ASC'),
+    queryRows(env.DB, 'SELECT id, user_id, key, name, created FROM link_api_tokens ORDER BY created ASC'),
+    queryRows(env.DB, 'SELECT key, user_id, created FROM link_feed_tokens ORDER BY created ASC'),
+    queryRows(env.DB, 'SELECT user_id, theme, bookmark_date_display, bookmark_link_target, web_archive_integration, tag_search, enable_sharing, enable_public_sharing, enable_favicons, display_url, permanent_notes, search_preferences, auto_tagging_rules, items_per_page, legacy_search, custom_css FROM link_profile ORDER BY user_id ASC'),
   ]);
   const exportedConfigRows = sanitizeConfigRowsForExport(configRows);
   const exportedAttachmentRows = includeAttachments ? attachmentRows : [];
@@ -527,6 +619,13 @@ export async function buildBackupArchive(
       ciphers: cipherRows.length,
       attachments: exportedAttachmentRows.length,
       webauthn_credentials: accountPasskeyRows.length,
+      link_bookmarks: linkBookmarkRows.length,
+      link_tags: linkTagRows.length,
+      link_bookmark_tags: linkBookmarkTagRows.length,
+      link_bundles: linkBundleRows.length,
+      link_api_tokens: linkApiTokenRows.length,
+      link_feed_tokens: linkFeedTokenRows.length,
+      link_profile: linkProfileRows.length,
     },
     includes: {
       attachments: includeAttachments,
@@ -550,6 +649,13 @@ export async function buildBackupArchive(
       ciphers: cipherRows,
       attachments: exportedAttachmentRows,
       webauthn_credentials: accountPasskeyRows,
+      link_bookmarks: linkBookmarkRows,
+      link_tags: linkTagRows,
+      link_bookmark_tags: linkBookmarkTagRows,
+      link_bundles: linkBundleRows,
+      link_api_tokens: linkApiTokenRows,
+      link_feed_tokens: linkFeedTokenRows,
+      link_profile: linkProfileRows,
     }, null, BACKUP_JSON_INDENT)),
   };
 
