@@ -10,9 +10,11 @@ import type { CiphersImportPayload } from '@/lib/api/vault';
 import { t } from '@/lib/i18n';
 import type { AccountPasskeyCredential, AdminInvite, AdminUser, AuditLogListResult, AuditLogSettings, AuthRequest, AuthorizedDevice, Cipher, CustomEquivalentDomain, DomainRules, Folder as VaultFolder, Profile, Send, SendDraft, SessionState, TwoFactorPasskeySettings, VaultDraft, YubiKeyOtpSettings } from '@/lib/types';
 import type { ExportRequest } from '@/lib/export-formats';
+import type { AuthedFetch } from '@/lib/api/shared';
 
 const VaultPage = lazy(() => import('@/components/VaultPage'));
 const SendsPage = lazy(() => import('@/components/SendsPage'));
+const LinksPage = lazy(() => import('@/components/LinksPage'));
 const PasswordGeneratorPage = lazy(() => import('@/components/PasswordGeneratorPage'));
 const PasswordSecurityPage = lazy(() => import('@/components/PasswordSecurityPage'));
 const TotpCodesPage = lazy(() => import('@/components/TotpCodesPage'));
@@ -48,6 +50,7 @@ export interface AppMainRoutesProps {
   decryptedCiphers: Cipher[];
   decryptedFolders: VaultFolder[];
   decryptedSends: Send[];
+  linksFetch: AuthedFetch;
   vaultError: string;
   ciphersLoading: boolean;
   foldersLoading: boolean;
@@ -242,6 +245,14 @@ export default function AppMainRoutes(props: AppMainRoutesProps) {
             uploadingSendFileName={props.uploadingSendFileName}
             sendUploadPercent={props.sendUploadPercent}
             mobileSidebarToggleKey={props.mobileSidebarToggleKey}
+            onNotify={props.onNotify}
+          />
+        </Suspense>
+      </Route>
+      <Route path="/links">
+        <Suspense fallback={<RouteContentFallback />}>
+          <LinksPage
+            linksFetch={props.linksFetch}
             onNotify={props.onNotify}
           />
         </Suspense>

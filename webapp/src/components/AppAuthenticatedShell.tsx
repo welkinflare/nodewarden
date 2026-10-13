@@ -1,4 +1,4 @@
-import { ArrowUpDown, ChevronDown, Clock3, Cloud, FileClock, Folder as FolderIcon, KeyRound, Lock, LogOut, MonitorSmartphone, Send as SendIcon, Settings as SettingsIcon, ShieldCheck, ShieldUser, Sparkles, Users } from 'lucide-preact';
+import { ArrowUpDown, Bookmark, ChevronDown, Clock3, Cloud, FileClock, Folder as FolderIcon, KeyRound, Lock, LogOut, MonitorSmartphone, Send as SendIcon, Settings as SettingsIcon, ShieldCheck, ShieldUser, Sparkles, Users } from 'lucide-preact';
 import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import { Link } from 'wouter';
@@ -131,6 +131,7 @@ export default function AppAuthenticatedShell(props: AppAuthenticatedShellProps)
   const groupedNav = (
     <>
       {renderSideLink('/vault', props.location === '/vault', <KeyRound size={16} />, t('nav_vault_items'))}
+      {renderSideLink('/links', props.location === '/links', <Bookmark size={16} />, t('nav_links'))}
       {renderSideLink('/sends', props.location === '/sends', <SendIcon size={16} />, t('nav_sends'))}
       {renderNavGroup(
         'tools',
@@ -238,6 +239,10 @@ export default function AppAuthenticatedShell(props: AppAuthenticatedShellProps)
           <Link href="/sends" className={`mobile-tab ${props.mobilePrimaryRoute === '/sends' ? 'active' : ''}`}>
             <SendIcon size={18} />
             <span>{t('nav_sends')}</span>
+          </Link>
+          <Link href="/links" className={`mobile-tab ${props.mobilePrimaryRoute === '/links' ? 'active' : ''}`}>
+            <Bookmark size={18} />
+            <span>{t('nav_links')}</span>
           </Link>
           <Link href="/settings" className={`mobile-tab ${props.mobilePrimaryRoute === '/settings' ? 'active' : ''}`}>
             <SettingsIcon size={18} />
