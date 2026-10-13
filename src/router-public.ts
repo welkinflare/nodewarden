@@ -32,7 +32,7 @@ import {
 } from './handlers/notifications';
 import { handlePublicUploadSendFile } from './handlers/sends';
 import { handleLinksTokenBookmarksRoute } from './handlers/links/router';
-import { handleLinksFeed, type LinksFeedKind } from './handlers/links/feeds';
+import { handleLinksFeed, handleLinksPublicFeed, type LinksFeedKind } from './handlers/links/feeds';
 import { isSafeWebsiteIconContentType } from './utils/content-type';
 import { jsonResponse, unsupportedResponse } from './utils/response';
 import { StorageService } from './services/storage';
@@ -365,6 +365,13 @@ export async function handlePublicRoute(
   // Links Atom feeds: auth is the per-user feed token (?token= query
   // param, never the session). Missing/invalid tokens answer 401 plain
   // text from the handler.
+  // Public shared feed (no token): shared bookmarks of users with public
+  // sharing enabled. Empty when nobody shares — still 200, like linkding.
+  if (path === '/api/links/feeds/public.atom' && method === 'GET') {
+    const blocked = await enforcePublicRateLimit();
+    if (blocked) return blocked;
+    return handleLinksPublicFeed(request, env, new URL(request.url));
+  }
   const linksFeedMatch = path.match(/^\/api\/links\/feeds\/(all|unread|shared)\.atom$/i);
   if (linksFeedMatch && method === 'GET') {
     const blocked = await enforcePublicRateLimit();

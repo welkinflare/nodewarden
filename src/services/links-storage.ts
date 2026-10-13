@@ -1081,6 +1081,23 @@ export class LinksStorage {
   // --- Feeds: latest 50 bookmarks from the last 30 days, newest first,
   // archived rows excluded. kind filters unread/shared on top. ---
 
+  // --- Public shared feed (linkding's public /feeds/shared): latest shared,
+  // unarchived bookmarks belonging to users with public sharing enabled. No
+  // token required; the profile flag is the gate. ---
+
+  async listPublicSharedBookmarks(limit = 50): Promise<LinkBookmarkRow[]> {
+    const { results } = await this.db
+      .prepare(
+        `SELECT b.* FROM link_bookmarks b ` +
+          `JOIN link_profile p ON p.user_id = b.user_id ` +
+          `WHERE b.is_archived = 0 AND b.shared = 1 AND p.enable_public_sharing = 1 ` +
+          `ORDER BY b.date_added DESC, b.id DESC LIMIT ?`
+      )
+      .bind(limit)
+      .all<LinkBookmarkRow>();
+    return (results ?? []) as LinkBookmarkRow[];
+  }
+
   async getFeedBookmarks(
     userId: string,
     kind: 'all' | 'unread' | 'shared',
