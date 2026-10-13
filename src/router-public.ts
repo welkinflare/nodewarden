@@ -31,6 +31,8 @@ import {
   handleNotificationsNegotiate,
 } from './handlers/notifications';
 import { handlePublicUploadSendFile } from './handlers/sends';
+import { handleLinksTokenBookmarksRoute } from './handlers/links/router';
+import { handleLinksFeed, type LinksFeedKind } from './handlers/links/feeds';
 import { isSafeWebsiteIconContentType } from './utils/content-type';
 import { jsonResponse, unsupportedResponse } from './utils/response';
 import { StorageService } from './services/storage';
@@ -348,6 +350,26 @@ export async function handlePublicRoute(
   const publicSendUploadMatch = path.match(/^\/api\/sends\/([^/]+)\/file\/([^/]+)\/?$/i);
   if (publicSendUploadMatch && (method === 'POST' || method === 'PUT') && new URL(request.url).searchParams.has('token')) {
     return handlePublicUploadSendFile(request, env, publicSendUploadMatch[1], publicSendUploadMatch[2]);
+  }
+
+  // Links (bookmarks) domain, linkding-compatible namespace. Token-ONLY
+  // auth (`Authorization: Token <key>`); Bitwarden Bearer JWTs are NOT
+  // accepted here — session users use /api/links/*. No Bitwarden-session
+  // requirement on these paths.
+  if (path === '/api/bookmarks' || path.startsWith('/api/bookmarks/')) {
+    const blocked = await enforcePublicRateLimit();
+    if (blocked) return blocked;
+    return handleLinksTokenBookmarksRoute(request, env, path, method);
+  }
+
+  // Links Atom feeds: auth is the per-user feed token (?token= query
+  // param, never the session). Missing/invalid tokens answer 401 plain
+  // text from the handler.
+  const linksFeedMatch = path.match(/^\/api\/links\/feeds\/(all|unread|shared)\.atom$/i);
+  if (linksFeedMatch && method === 'GET') {
+    const blocked = await enforcePublicRateLimit();
+    if (blocked) return blocked;
+    return handleLinksFeed(request, env, new URL(request.url), linksFeedMatch[1].toLowerCase() as LinksFeedKind);
   }
 
   const sendAccessMatch = path.match(/^\/api\/sends\/access\/([^/]+)$/i);

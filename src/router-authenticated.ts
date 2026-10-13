@@ -96,6 +96,7 @@ import {
   handleListPendingAuthRequests,
   handleUpdateAuthRequest,
 } from './handlers/auth-requests';
+import { handleLinksRoute } from './handlers/links/router';
 
 export async function handleAuthenticatedRoute(
   request: Request,
@@ -476,6 +477,10 @@ export async function handleAuthenticatedRoute(
 
   const adminResponse = await handleAdminRoute(request, env, currentUser, path, method);
   if (adminResponse) return adminResponse;
+
+  if (path === '/api/links' || path === '/api/links/' || path.startsWith('/api/links/')) {
+    return handleLinksRoute(request, env, userId, path, method);
+  }
 
   return null;
 }
