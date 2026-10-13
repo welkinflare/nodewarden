@@ -124,8 +124,8 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
 
   return (
     <div class="space-y-3">
-      {error ? <p class="text-sm text-red-600">{error}</p> : null}
-      {saved ? <p class="text-sm text-green-700">{saved}</p> : null}
+      {error ? <p class="links-error">{error}</p> : null}
+      {saved ? <p class="links-ok">{saved}</p> : null}
       <div class="flex flex-wrap gap-1">
         {tabs.map(([id, label]) => (
           <button
@@ -143,13 +143,13 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
       </div>
 
       {tab === 'prefs' ? (
-        <div class="space-y-2 rounded border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+        <div class="card space-y-2 p-3">
           {draft ? (
             <>
               <label class="block text-sm">
                 Date display
                 <select
-                  class="ml-2 rounded border px-2 py-1 dark:bg-gray-800"
+                  class="input"
                   value={str('bookmark_date_display') || 'relative'}
                   onChange={(e) => setField('bookmark_date_display', (e.target as HTMLSelectElement).value)}
                 >
@@ -160,7 +160,7 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
               <label class="block text-sm">
                 Link target
                 <select
-                  class="ml-2 rounded border px-2 py-1 dark:bg-gray-800"
+                  class="input"
                   value={str('bookmark_link_target') || '_blank'}
                   onChange={(e) => setField('bookmark_link_target', (e.target as HTMLSelectElement).value)}
                 >
@@ -171,7 +171,7 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
               <label class="block text-sm">
                 Tag search
                 <select
-                  class="ml-2 rounded border px-2 py-1 dark:bg-gray-800"
+                  class="input"
                   value={str('tag_search') || 'strict'}
                   onChange={(e) => setField('tag_search', (e.target as HTMLSelectElement).value)}
                 >
@@ -188,7 +188,7 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
               <label class="block text-sm">
                 Items per page
                 <input
-                  class="ml-2 w-20 rounded border px-2 py-1 dark:bg-gray-800"
+                  class="input w-20"
                   type="number"
                   min={1}
                   max={100}
@@ -196,7 +196,7 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
                   onInput={(e) => setField('items_per_page', Number((e.target as HTMLInputElement).value))}
                 />
               </label>
-              <button class="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={saveProfile}>
+              <button class="btn btn-primary small" onClick={saveProfile}>
                 Save preferences
               </button>
             </>
@@ -207,20 +207,20 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
       ) : null}
 
       {tab === 'autotag' ? (
-        <div class="space-y-2 rounded border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-          <p class="text-xs text-gray-500">
+        <div class="card space-y-2 p-3">
+          <p class="links-hint">
             One rule per line: <code>pattern tag1,tag2</code> (substring/wildcard match on URL).
           </p>
           {draft ? (
             <>
               <textarea
-                class="w-full rounded border px-2 py-1 font-mono text-sm dark:bg-gray-800"
+                class="input w-full font-mono"
                 rows={8}
                 value={str('auto_tagging_rules')}
                 onInput={(e) => setField('auto_tagging_rules', (e.target as HTMLTextAreaElement).value)}
                 placeholder={'example.com reading\n*.pdf pdf,docs'}
               />
-              <button class="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={saveProfile}>
+              <button class="btn btn-primary small" onClick={saveProfile}>
                 Save rules
               </button>
             </>
@@ -231,25 +231,25 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
       ) : null}
 
       {tab === 'token' ? (
-        <div class="space-y-2 rounded border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+        <div class="card space-y-2 p-3">
           <div class="flex items-center gap-2">
             <h2 class="font-medium">API tokens (extension: <code>Authorization: Token &lt;key&gt;</code>)</h2>
             <span class="flex-1" />
-            <button class="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={createToken}>
+            <button class="btn btn-primary small" onClick={createToken}>
               New token
             </button>
           </div>
-          <p class="text-xs text-gray-500">
+          <p class="links-hint">
             Point the official linkding browser extension at this server URL and paste a token here.
           </p>
           <ul class="space-y-1">
             {(tokensQuery.data?.api_tokens ?? []).map((token) => (
-              <li key={token.id} class="flex flex-wrap items-center gap-2 rounded border px-2 py-1 font-mono text-xs">
+              <li key={token.id} class="card flex flex-wrap items-center gap-2 px-2 py-1 font-mono text-xs">
                 <span>{token.name || '(unnamed)'}</span>
                 <span class="break-all">{token.key}</span>
                 <span class="flex-1" />
                 <button
-                  class="rounded border border-red-300 px-2 py-0.5 text-red-600"
+                  class="btn btn-danger small"
                   onClick={() => removeToken(token.id)}
                 >
                   Delete
@@ -258,21 +258,21 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
             ))}
           </ul>
           {(tokensQuery.data?.api_tokens ?? []).length === 0 ? (
-            <p class="text-sm text-gray-500">No API tokens yet.</p>
+            <p class="links-hint">No API tokens yet.</p>
           ) : null}
         </div>
       ) : null}
 
       {tab === 'feed' ? (
-        <div class="space-y-2 rounded border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+        <div class="card space-y-2 p-3">
           <h2 class="font-medium">Feed URLs (copy into your reader)</h2>
           {feedKey ? (
             <ul class="space-y-1 font-mono text-xs">
               {feedUrls.map((u) => (
-                <li key={u} class="break-all rounded border px-2 py-1">
+                <li key={u} class="card break-all px-2 py-1">
                   {u}{' '}
                   <button
-                    class="ml-2 rounded border px-1"
+                    class="btn btn-secondary small"
                     onClick={() => {
                       try {
                         navigator.clipboard.writeText(u);
@@ -289,7 +289,7 @@ export function LinkSettings({ linksFetch }: { linksFetch: AuthedFetch }) {
           ) : (
             <div class="flex items-center gap-2 text-sm">
               <span>No feed token yet.</span>
-              <button class="rounded bg-blue-600 px-3 py-1 text-white" onClick={createFeedToken}>
+              <button class="btn btn-primary small" onClick={createFeedToken}>
                 Create feed token
               </button>
             </div>

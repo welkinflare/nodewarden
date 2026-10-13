@@ -113,16 +113,16 @@ export function LinkModal({
   return (
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        class="w-full max-w-lg rounded bg-white p-4 dark:bg-gray-900"
+        class="card links-modal"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 class="mb-2 text-lg font-semibold">{initial ? 'Edit bookmark' : 'Add bookmark'}</h2>
-        {error ? <p class="mb-2 text-sm text-red-600">{error}</p> : null}
-        {rescrape ? <p class="mb-2 text-sm text-green-700">{rescrape}</p> : null}
+        {error ? <p class="links-error">{error}</p> : null}
+        {rescrape ? <p class="links-ok">{rescrape}</p> : null}
         <label class="block text-sm">
           URL
           <input
-            class="mt-1 w-full rounded border px-2 py-1 dark:bg-gray-800"
+            class="input w-full"
             value={form.url}
             onInput={(e) => set('url', (e.target as HTMLInputElement).value)}
             placeholder="https://example.com/article"
@@ -131,7 +131,7 @@ export function LinkModal({
         <label class="mt-2 block text-sm">
           Title
           <input
-            class="mt-1 w-full rounded border px-2 py-1 dark:bg-gray-800"
+            class="input w-full"
             value={form.title}
             onInput={(e) => set('title', (e.target as HTMLInputElement).value)}
           />
@@ -139,7 +139,7 @@ export function LinkModal({
         <label class="mt-2 block text-sm">
           Description
           <textarea
-            class="mt-1 w-full rounded border px-2 py-1 dark:bg-gray-800"
+            class="input w-full"
             rows={2}
             value={form.description}
             onInput={(e) => set('description', (e.target as HTMLTextAreaElement).value)}
@@ -148,7 +148,7 @@ export function LinkModal({
         <label class="mt-2 block text-sm">
           Notes (Markdown)
           <textarea
-            class="mt-1 w-full rounded border px-2 py-1 dark:bg-gray-800"
+            class="input w-full"
             rows={3}
             value={form.notes}
             onInput={(e) => set('notes', (e.target as HTMLTextAreaElement).value)}
@@ -157,7 +157,7 @@ export function LinkModal({
         <label class="mt-2 block text-sm">
           Tags (comma-separated)
           <input
-            class="mt-1 w-full rounded border px-2 py-1 dark:bg-gray-800"
+            class="input w-full"
             value={form.tag_names}
             list="links-tag-options"
             onInput={(e) => set('tag_names', (e.target as HTMLInputElement).value)}
@@ -185,7 +185,7 @@ export function LinkModal({
         </div>
         <div class="mt-3 flex flex-wrap gap-2">
           <button
-            class="rounded border px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+            class="btn btn-secondary small"
             disabled={busy}
             onClick={doRescrape}
           >
@@ -193,13 +193,13 @@ export function LinkModal({
           </button>
           <span class="flex-1" />
           <button
-            class="rounded border px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+            class="btn btn-secondary small"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
-            class="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+            class="btn btn-primary small"
             disabled={busy}
             onClick={save}
           >

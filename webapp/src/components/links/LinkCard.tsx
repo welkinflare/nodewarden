@@ -11,11 +11,16 @@ export interface LinkCardPrefs {
   linkTarget: string;
 }
 
+// linkding-style bookmark row: title link, URL, #tags | description,
+// notes box, then a text-action footer. The selection checkbox only shows
+// in bulk-edit mode.
 export function LinkCard({
   bookmark,
   prefs,
+  bulkMode,
   selected,
   onToggle,
+  onTagClick,
   onEdit,
   onArchive,
   onDelete,
@@ -24,8 +29,10 @@ export function LinkCard({
 }: {
   bookmark: LinkBookmark;
   prefs: LinkCardPrefs;
+  bulkMode: boolean;
   selected: boolean;
   onToggle: () => void;
+  onTagClick: (tag: string) => void;
   onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
@@ -36,88 +43,82 @@ export function LinkCard({
   const date = prefs.absoluteTime
     ? formatLinksAbsolute(bookmark.date_added)
     : formatLinksRelative(bookmark.date_added);
+  const tags = bookmark.tag_names ?? [];
 
   return (
-    <article class="rounded border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-      <div class="flex items-start gap-2">
+    <div class="links-item">
+      {bulkMode ? (
         <input
           type="checkbox"
           aria-label={`Select bookmark ${bookmark.id}`}
           checked={selected}
           onChange={onToggle}
-          class="mt-1"
+          class="links-item-check"
         />
-        {prefs.showFavicon && bookmark.favicon_url ? (
-          <img src={bookmark.favicon_url} alt="" class="mt-1 h-4 w-4" loading="lazy" />
+      ) : null}
+      {prefs.showFavicon && bookmark.favicon_url ? (
+        <img src={bookmark.favicon_url} alt="" width={16} height={16} loading="lazy" style={{ marginTop: 2 }} />
+      ) : null}
+      <div class="links-item-body">
+        <a
+          href={bookmark.url}
+          target={prefs.linkTarget || '_blank'}
+          rel="noopener noreferrer"
+          class="links-item-title"
+        >
+          {bookmark.title || bookmark.url}
+        </a>
+        {prefs.showDisplayUrl ? (
+          <div class="links-item-url">{displayLinksUrl(bookmark.url)}</div>
         ) : null}
-        <div class="min-w-0 flex-1">
-          <a
-            href={bookmark.url}
-            target={prefs.linkTarget || '_blank'}
-            rel="noopener noreferrer"
-            class="break-words font-medium text-blue-700 hover:underline dark:text-blue-400"
-          >
-            {bookmark.title || bookmark.url}
-          </a>
-          {prefs.showDisplayUrl ? (
-            <div class="truncate text-xs text-gray-500">{displayLinksUrl(bookmark.url)}</div>
-          ) : null}
-          {bookmark.description ? (
-            <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">{bookmark.description}</p>
-          ) : null}
-          {bookmark.notes ? (
-            notesOpen ? (
-              <div
-                class="markdown-body mt-1 text-sm"
-                dangerouslySetInnerHTML={{ __html: renderLinksMarkdown(bookmark.notes) }}
-              />
-            ) : (
-              <button class="mt-1 text-xs text-blue-600 underline" onClick={() => setNotesOpen(true)}>
-                Show notes
-              </button>
-            )
-          ) : null}
-          <div class="mt-1 flex flex-wrap gap-1">
-            {(bookmark.tag_names ?? []).map((tagName) => (
-              <span
-                key={tagName}
-                class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200"
-              >
-                #{tagName}
+        {(tags.length > 0 || bookmark.description) ? (
+          <div class="links-item-desc">
+            {tags.map((tagName, i) => (
+              <span key={tagName}>
+                {i > 0 ? ' ' : null}
+                <button type="button" class="taglink" onClick={() => onTagClick(tagName)}>
+                  #{tagName}
+                </button>
               </span>
             ))}
+            {tags.length > 0 && bookmark.description ? <span> | </span> : null}
+            {bookmark.description ? <span>{bookmark.description}</span> : null}
           </div>
-          <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-            <span title={formatLinksAbsolute(bookmark.date_added)}>{date}</span>
-            {bookmark.unread ? <span class="font-semibold">unread</span> : null}
-            {bookmark.is_archived ? <span>archived</span> : null}
-            {bookmark.shared ? <span>shared</span> : null}
-            {bookmark.web_archive_snapshot_url ? (
-              <a href={bookmark.web_archive_snapshot_url} target="_blank" rel="noreferrer" class="underline">
-                archive.org
-              </a>
-            ) : null}
-          </div>
-          <div class="mt-2 flex flex-wrap gap-1 text-xs">
-            <button class="rounded border px-2 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={onEdit}>Edit</button>
-            <button class="rounded border px-2 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={onArchive}>
-              {bookmark.is_archived ? 'Unarchive' : 'Archive'}
+        ) : null}
+        {bookmark.notes && (notesOpen || prefs.permanentNotes) ? (
+          <div
+            class="links-notes"
+            dangerouslySetInnerHTML={{ __html: renderLinksMarkdown(bookmark.notes) }}
+          />
+        ) : null}
+        <div class="links-meta">
+          <span title={formatLinksAbsolute(bookmark.date_added)}>{date}</span>
+          {bookmark.unread ? <span>· unread</span> : null}
+          {bookmark.is_archived ? <span>· archived</span> : null}
+          {bookmark.shared ? <span>· shared</span> : null}
+          {bookmark.web_archive_snapshot_url ? (
+            <span>· <a href={bookmark.web_archive_snapshot_url} target="_blank" rel="noreferrer">archive.org</a></span>
+          ) : null}
+        </div>
+        <div class="links-actions">
+          {bookmark.notes && !prefs.permanentNotes ? (
+            <button type="button" class="links-action" onClick={() => setNotesOpen((v) => !v)}>
+              {notesOpen ? 'Hide' : 'View'}
             </button>
-            <button class="rounded border px-2 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={onToggleUnread}>
-              {bookmark.unread ? 'Mark read' : 'Mark unread'}
-            </button>
-            <button class="rounded border px-2 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={onToggleShared}>
-              {bookmark.shared ? 'Unshare' : 'Share'}
-            </button>
-            <button
-              class="rounded border border-red-300 px-2 py-0.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-              onClick={onDelete}
-            >
-              Delete
-            </button>
-          </div>
+          ) : null}
+          <button type="button" class="links-action" onClick={onEdit}>Edit</button>
+          <button type="button" class="links-action" onClick={onArchive}>
+            {bookmark.is_archived ? 'Unarchive' : 'Archive'}
+          </button>
+          <button type="button" class="links-action" onClick={onToggleUnread}>
+            {bookmark.unread ? 'Mark read' : 'Mark unread'}
+          </button>
+          <button type="button" class="links-action" onClick={onToggleShared}>
+            {bookmark.shared ? 'Unshare' : 'Share'}
+          </button>
+          <button type="button" class="links-action danger" onClick={onDelete}>Remove</button>
         </div>
       </div>
-    </article>
+    </div>
   );
 }

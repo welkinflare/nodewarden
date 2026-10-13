@@ -53,10 +53,10 @@ export function LinkBulkBar({
   }
 
   return (
-    <div class="sticky bottom-2 flex flex-wrap items-center gap-2 rounded border border-blue-300 bg-blue-50 p-2 text-sm dark:border-blue-800 dark:bg-blue-950">
+    <div class="card links-bulkbar">
       <strong>{selected.length} selected</strong>
       <select
-        class="rounded border px-1 py-0.5 dark:bg-gray-800"
+        class="input"
         value={action}
         onChange={(e) => setAction((e.target as HTMLSelectElement).value as LinkBulkAction)}
       >
@@ -66,23 +66,23 @@ export function LinkBulkBar({
       </select>
       {needsTags ? (
         <input
-          class="rounded border px-2 py-0.5 dark:bg-gray-800"
+          class="input"
           placeholder="tag1, tag2"
           value={tags}
           onInput={(e) => setTags((e.target as HTMLInputElement).value)}
         />
       ) : null}
       <button
-        class="rounded bg-blue-600 px-2 py-0.5 text-white hover:bg-blue-700"
+        class="btn btn-primary small"
         disabled={busy}
         onClick={run}
       >
         Apply
       </button>
-      <button class="rounded border px-2 py-0.5 hover:bg-white dark:hover:bg-gray-800" onClick={onClear}>
+      <button class="btn btn-secondary small" onClick={onClear}>
         Clear
       </button>
-      {error ? <span class="text-red-600">{error}</span> : null}
+      {error ? <span class="links-error">{error}</span> : null}
     </div>
   );
 }

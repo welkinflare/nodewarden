@@ -83,22 +83,22 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
 
   return (
     <div class="space-y-3">
-      {error ? <p class="text-sm text-red-600">{error}</p> : null}
-      {info ? <p class="text-sm text-green-700">{info}</p> : null}
+      {error ? <p class="links-error">{error}</p> : null}
+      {info ? <p class="links-ok">{info}</p> : null}
 
-      <div class="rounded border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+      <div class="card p-3">
         <h2 class="mb-2 font-medium">Export</h2>
         <div class="flex flex-wrap gap-2 text-sm">
-          <button class="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => downloadLinksExport('export.json')}>
+          <button class="btn btn-secondary small" onClick={() => downloadLinksExport('export.json')}>
             Download JSON backup
           </button>
-          <button class="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => downloadLinksExport('export.html')}>
+          <button class="btn btn-secondary small" onClick={() => downloadLinksExport('export.html')}>
             Download Netscape HTML
           </button>
         </div>
       </div>
 
-      <div class="space-y-2 rounded border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+      <div class="space-y-2 card p-3">
         <h2 class="font-medium">Import</h2>
         <div class="flex flex-wrap gap-4 text-sm">
           <label class="block">
@@ -121,7 +121,7 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
           </label>
         </div>
         {preview ? (
-          <div class="rounded border px-2 py-1 text-sm">
+          <div class="card px-2 py-1 text-sm">
             <p>
               Preview ({preview.kind}): {preview.add} will be added, {preview.update} updated,{' '}
               {preview.skip} skipped, {preview.total} total.
@@ -131,7 +131,7 @@ export function LinkBackup({ linksFetch }: { linksFetch: AuthedFetch }) {
               I have exported a current backup first.
             </label>
             <button
-              class="mt-2 rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-50"
+              class="btn btn-primary small"
               disabled={!ack || busy}
               onClick={confirm}
             >

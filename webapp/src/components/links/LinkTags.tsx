@@ -85,19 +85,19 @@ export function LinkTags({ linksFetch }: { linksFetch: AuthedFetch }) {
 
   return (
     <div class="space-y-3">
-      {error ? <p class="text-sm text-red-600">{error}</p> : null}
+      {error ? <p class="links-error">{error}</p> : null}
       <div class="flex gap-2">
         <input
-          class="flex-1 rounded border px-2 py-1 dark:bg-gray-800"
+          class="input"
           placeholder="New tag name"
           value={name}
           onInput={(e) => setName((e.target as HTMLInputElement).value)}
         />
-        <button class="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700" onClick={create}>
+        <button class="btn btn-primary small" onClick={create}>
           Add
         </button>
         <button
-          class="rounded border px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+          class="btn btn-secondary small"
           onClick={() => setMergeOpen(true)}
         >
           Merge…
@@ -108,21 +108,21 @@ export function LinkTags({ linksFetch }: { linksFetch: AuthedFetch }) {
         {tags.map((tag) => (
           <li
             key={tag.id}
-            class="flex items-center gap-2 rounded border border-gray-200 bg-white px-2 py-1 text-sm dark:border-gray-800 dark:bg-gray-900"
+            class="card flex items-center gap-2 px-2 py-1 text-sm"
           >
             <span class="font-medium">#{tag.name}</span>
             {tag.bookmark_count !== undefined ? (
-              <span class="text-xs text-gray-500">{tag.bookmark_count}</span>
+              <span class="links-hint">{tag.bookmark_count}</span>
             ) : null}
             <span class="flex-1" />
             <button
-              class="rounded border px-2 py-0.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
+              class="btn btn-secondary small"
               onClick={() => setRenaming({ id: tag.id, name: tag.name })}
             >
               Rename
             </button>
             <button
-              class="rounded border border-red-300 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
+              class="btn btn-danger small"
               onClick={() => remove(tag.id, tag.name)}
             >
               Delete
@@ -131,23 +131,23 @@ export function LinkTags({ linksFetch }: { linksFetch: AuthedFetch }) {
         ))}
       </ul>
       {tags.length === 0 && !tagsQuery.isLoading ? (
-        <p class="text-sm text-gray-500">No tags yet.</p>
+        <p class="links-hint">No tags yet.</p>
       ) : null}
 
       {renaming ? (
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setRenaming(null)}>
-          <div class="w-full max-w-sm rounded bg-white p-4 dark:bg-gray-900" onClick={(e) => e.stopPropagation()}>
+          <div class="card links-modal" onClick={(e) => e.stopPropagation()}>
             <h2 class="mb-2 font-semibold">Rename tag</h2>
             <input
-              class="w-full rounded border px-2 py-1 dark:bg-gray-800"
+              class="input w-full"
               value={renaming.name}
               onInput={(e) =>
                 setRenaming({ ...renaming, name: (e.target as HTMLInputElement).value })
               }
             />
             <div class="mt-3 flex justify-end gap-2">
-              <button class="rounded border px-3 py-1 text-sm" onClick={() => setRenaming(null)}>Cancel</button>
-              <button class="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={rename}>Save</button>
+              <button class="btn btn-secondary small" onClick={() => setRenaming(null)}>Cancel</button>
+              <button class="btn btn-primary small" onClick={rename}>Save</button>
             </div>
           </div>
         </div>
@@ -155,20 +155,20 @@ export function LinkTags({ linksFetch }: { linksFetch: AuthedFetch }) {
 
       {mergeOpen ? (
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setMergeOpen(false)}>
-          <div class="w-full max-w-sm rounded bg-white p-4 dark:bg-gray-900" onClick={(e) => e.stopPropagation()}>
+          <div class="card links-modal" onClick={(e) => e.stopPropagation()}>
             <h2 class="mb-2 font-semibold">Merge tags</h2>
-            <p class="mb-2 text-xs text-gray-500">
+            <p class="mb-2 links-hint">
               Move all bookmarks from the source tag onto the target (created if missing).
             </p>
             <input
-              class="mb-2 w-full rounded border px-2 py-1 dark:bg-gray-800"
+              class="mb-2 input w-full"
               placeholder="From (source)"
               value={mergeFrom}
               list="links-tags-list"
               onInput={(e) => setMergeFrom((e.target as HTMLInputElement).value)}
             />
             <input
-              class="w-full rounded border px-2 py-1 dark:bg-gray-800"
+              class="input w-full"
               placeholder="To (target)"
               value={mergeTo}
               list="links-tags-list"
@@ -180,8 +180,8 @@ export function LinkTags({ linksFetch }: { linksFetch: AuthedFetch }) {
               ))}
             </datalist>
             <div class="mt-3 flex justify-end gap-2">
-              <button class="rounded border px-3 py-1 text-sm" onClick={() => setMergeOpen(false)}>Cancel</button>
-              <button class="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={merge}>Merge</button>
+              <button class="btn btn-secondary small" onClick={() => setMergeOpen(false)}>Cancel</button>
+              <button class="btn btn-primary small" onClick={merge}>Merge</button>
             </div>
           </div>
         </div>

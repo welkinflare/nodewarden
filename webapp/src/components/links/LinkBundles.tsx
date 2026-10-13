@@ -76,37 +76,37 @@ export function LinkBundles({
 
   return (
     <div class="space-y-3">
-      {error ? <p class="text-sm text-red-600">{error}</p> : null}
+      {error ? <p class="links-error">{error}</p> : null}
 
-      <div class="grid gap-2 rounded border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+      <div class="card grid gap-2 p-3">
         <h2 class="text-sm font-semibold">{editingId ? 'Edit bundle' : 'New bundle'}</h2>
         <input
-          class="rounded border px-2 py-1 text-sm dark:bg-gray-800"
+          class="input"
           placeholder="Name"
           value={form.name}
           onInput={(e) => setForm({ ...form, name: (e.target as HTMLInputElement).value })}
         />
         <input
-          class="rounded border px-2 py-1 text-sm dark:bg-gray-800"
+          class="input"
           placeholder="Search text"
           value={form.search}
           onInput={(e) => setForm({ ...form, search: (e.target as HTMLInputElement).value })}
         />
         <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <input
-            class="rounded border px-2 py-1 text-sm dark:bg-gray-800"
+            class="input"
             placeholder="any tags (comma)"
             value={form.any_tags}
             onInput={(e) => setForm({ ...form, any_tags: (e.target as HTMLInputElement).value })}
           />
           <input
-            class="rounded border px-2 py-1 text-sm dark:bg-gray-800"
+            class="input"
             placeholder="all tags (comma)"
             value={form.all_tags}
             onInput={(e) => setForm({ ...form, all_tags: (e.target as HTMLInputElement).value })}
           />
           <input
-            class="rounded border px-2 py-1 text-sm dark:bg-gray-800"
+            class="input"
             placeholder="excluded tags (comma)"
             value={form.excluded_tags}
             onInput={(e) => setForm({ ...form, excluded_tags: (e.target as HTMLInputElement).value })}
@@ -134,7 +134,7 @@ export function LinkBundles({
             Only shared
           </label>
           <input
-            class="rounded border px-2 py-1 text-sm dark:bg-gray-800"
+            class="input"
             placeholder="order (e.g. title_asc)"
             value={form.order}
             onInput={(e) => setForm({ ...form, order: (e.target as HTMLInputElement).value })}
@@ -142,7 +142,7 @@ export function LinkBundles({
           <span class="flex-1" />
           {editingId ? (
             <button
-              class="rounded border px-3 py-1 text-sm"
+              class="btn btn-secondary small"
               onClick={() => {
                 setForm(EMPTY);
                 setEditingId(null);
@@ -151,7 +151,7 @@ export function LinkBundles({
               Cancel
             </button>
           ) : null}
-          <button class="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={save}>
+          <button class="btn btn-primary small" onClick={save}>
             {editingId ? 'Update' : 'Create'}
           </button>
         </div>
@@ -162,16 +162,16 @@ export function LinkBundles({
         {bundles.map((bundle) => (
           <li
             key={bundle.id}
-            class="flex flex-wrap items-center gap-2 rounded border border-gray-200 bg-white px-2 py-1 text-sm dark:border-gray-800 dark:bg-gray-900"
+            class="card flex flex-wrap items-center gap-2 px-2 py-1 text-sm"
           >
             <span class="font-medium">{bundle.name}</span>
-            {bundle.search ? <span class="text-xs text-gray-500">“{bundle.search}”</span> : null}
+            {bundle.search ? <span class="links-hint">“{bundle.search}”</span> : null}
             <span class="flex-1" />
-            <button class="rounded border px-2 py-0.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => onApply(bundle.id)}>
+            <button class="btn btn-secondary small" onClick={() => onApply(bundle.id)}>
               Apply filter
             </button>
             <button
-              class="rounded border px-2 py-0.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
+              class="btn btn-secondary small"
               onClick={() => {
                 setEditingId(bundle.id);
                 setForm({
@@ -189,7 +189,7 @@ export function LinkBundles({
               Edit
             </button>
             <button
-              class="rounded border border-red-300 px-2 py-0.5 text-xs text-red-600"
+              class="btn btn-danger small"
               onClick={() => remove(bundle)}
             >
               Delete
@@ -198,7 +198,7 @@ export function LinkBundles({
         ))}
       </ul>
       {bundles.length === 0 && !bundlesQuery.isLoading ? (
-        <p class="text-sm text-gray-500">No bundles yet.</p>
+        <p class="links-hint">No bundles yet.</p>
       ) : null}
     </div>
   );
