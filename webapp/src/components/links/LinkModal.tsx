@@ -49,6 +49,7 @@ export function LinkModal({
   initial,
   prefillUrl,
   tagOptions,
+  sharingEnabled,
   onClose,
   onSaved,
 }: {
@@ -56,6 +57,7 @@ export function LinkModal({
   initial: LinkBookmark | null;
   prefillUrl?: string;
   tagOptions: string[];
+  sharingEnabled: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -109,7 +111,10 @@ export function LinkModal({
         tag_names: splitTags(form.tag_names),
         unread: form.unread,
         is_archived: form.is_archived,
-        shared: form.shared,
+        // The Shared checkbox is hidden while sharing is disabled: default
+        // off on create, and leave the stored flag untouched on edit
+        // (omitted keys are not patched server-side).
+        ...(sharingEnabled || !initial ? { shared: sharingEnabled && form.shared } : {}),
       };
       if (initial) {
         await updateLinkBookmark(linksFetch, initial.id, payload);
@@ -196,10 +201,12 @@ export function LinkModal({
             <input type="checkbox" checked={form.is_archived} onChange={(e) => set('is_archived', (e.target as HTMLInputElement).checked)} />
             Archived
           </label>
-          <label class="flex items-center gap-1">
-            <input type="checkbox" checked={form.shared} onChange={(e) => set('shared', (e.target as HTMLInputElement).checked)} />
-            Shared
-          </label>
+          {sharingEnabled ? (
+            <label class="flex items-center gap-1">
+              <input type="checkbox" checked={form.shared} onChange={(e) => set('shared', (e.target as HTMLInputElement).checked)} />
+              Shared
+            </label>
+          ) : null}
         </div>
         <div class="mt-3 flex flex-wrap gap-2">
           <button

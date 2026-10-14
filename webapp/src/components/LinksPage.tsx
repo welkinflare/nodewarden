@@ -263,6 +263,7 @@ export default function LinksPage({
   });
 
   const totalCount = listQuery.data?.pages[0]?.count ?? 0;
+  const sharingEnabled = Number(profileQuery.data?.['enable_sharing'] ?? 0) === 1;
   const prefs = {
     showFavicon: Number(profileQuery.data?.['enable_favicons'] ?? 1) === 1,
     showDisplayUrl: Number(profileQuery.data?.['display_url'] ?? 1) === 1,
@@ -770,8 +771,12 @@ export default function LinksPage({
               initial={editing}
               prefillUrl={editing ? undefined : prefillUrl}
               tagOptions={tags.map((tag) => tag.name)}
+              sharingEnabled={sharingEnabled}
               onClose={() => setModalOpen(false)}
               onSaved={() => {
+                // The pasted URL has served its purpose once saved: clear the
+                // search box on create, but keep the filter on edit.
+                if (!editing) setQ('');
                 setModalOpen(false);
                 setPrefillUrl('');
                 queryClient.invalidateQueries({ queryKey: ['links-bookmarks'] });
