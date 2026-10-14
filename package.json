@@ -85,6 +85,7 @@
     "lucide-preact": "^1.49.0",
     "preact": "^10.29.3",
     "qrcode-generator": "^2.0.4",
+    "react": "^19.3.0",
     "wouter": "^3.13.0"
   }
 }
