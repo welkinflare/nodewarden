@@ -21,7 +21,7 @@ import {
   type LinkBookmarkRow,
   type LinkBundleRow,
 } from '../../services/links-storage';
-import { normalizeUrl } from '../../linkding/normalize';
+import { ensureHttpScheme, isValidHttpUrl, normalizeUrl } from '../../linkding/normalize';
 import { applyAutoTags } from '../../linkding/autotag';
 import { parseQuery } from '../../linkding/search';
 import { googleFaviconUrl, scrapeMetadata } from '../../linkding/scraper';
@@ -31,15 +31,6 @@ const NOT_FOUND = 'Not found.';
 // Handlers cap bulk selections at 100 ids so the chunked IN-lists in
 // LinksStorage always stay under the D1 bind-variable limit.
 export const LINKS_BULK_MAX_IDS = 100;
-
-function isValidHttpUrl(raw: string): boolean {
-  try {
-    const u = new URL(raw);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
 
 function parseFlag(value: unknown): number {
   return value === 1 || value === true || value === '1' || value === 'true' ? 1 : 0;
@@ -275,7 +266,7 @@ export async function handleCheckBookmark(
   url: URL
 ): Promise<Response> {
   void request;
-  const rawUrl = (url.searchParams.get('url') ?? '').trim();
+  const rawUrl = ensureHttpScheme(url.searchParams.get('url') ?? '');
   if (!rawUrl) return jsonResponse({ detail: 'URL is required.' }, 400);
   const store = new LinksStorage(env.DB);
   await store.ensureLinksProfile(userId);
@@ -307,7 +298,7 @@ export async function handleCreateBookmark(
   userId: string
 ): Promise<Response> {
   const body = await readJsonBody(request);
-  const rawUrl = String(body['url'] ?? '').trim();
+  const rawUrl = ensureHttpScheme(body['url']);
   if (!rawUrl) return jsonResponse({ detail: 'URL is required.' }, 400);
   if (!isValidHttpUrl(rawUrl)) {
     return jsonResponse({ detail: 'Enter a valid URL.' }, 400);
@@ -458,7 +449,7 @@ export async function handleUpdateBookmark(
   const patch: Record<string, unknown> = { date_modified: now };
   let nextUrl = row.url;
   if (body['url'] !== undefined) {
-    const rawUrl = String(body['url']).trim();
+    const rawUrl = ensureHttpScheme(body['url']);
     if (!rawUrl || !isValidHttpUrl(rawUrl)) {
       return jsonResponse({ detail: 'Enter a valid URL.' }, 400);
     }

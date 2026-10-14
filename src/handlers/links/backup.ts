@@ -9,7 +9,7 @@
 import type { Env } from '../../types';
 import { jsonResponse } from '../../utils/response';
 import { LinksStorage, type LinkBookmarkRow } from '../../services/links-storage';
-import { normalizeUrl } from '../../linkding/normalize';
+import { ensureHttpScheme, isValidHttpUrl, normalizeUrl } from '../../linkding/normalize';
 import { buildNetscape, parseNetscape } from '../../linkding/netscape';
 
 // Export payload version marker (linkflare exports carried its app VERSION;
@@ -35,15 +35,6 @@ interface ImportEntry {
 
 function parseFlag(value: unknown): number {
   return value === 1 || value === true || value === '1' || value === 'true' ? 1 : 0;
-}
-
-function isValidHttpUrl(raw: string): boolean {
-  try {
-    const u = new URL(raw);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
 }
 
 function parseTagNamesFlexible(value: unknown): string[] {
@@ -194,11 +185,12 @@ export async function computeLinksImportPreview(
   let update = 0;
   let skip = 0;
   for (const entry of entries) {
-    if (!entry.url || !isValidHttpUrl(entry.url)) {
+    const url = ensureHttpScheme(entry.url);
+    if (!url || !isValidHttpUrl(url)) {
       skip++;
       continue;
     }
-    const normalized = normalizeUrl(entry.url);
+    const normalized = normalizeUrl(url);
     const existing = await store.getBookmarkByNormalized(userId, normalized);
     if (!existing) {
       add++;
@@ -230,17 +222,18 @@ export async function applyLinksImportEntries(
   let update = 0;
   let skip = 0;
   for (const entry of entries) {
-    if (!entry.url || !isValidHttpUrl(entry.url)) {
+    const url = ensureHttpScheme(entry.url);
+    if (!url || !isValidHttpUrl(url)) {
       skip++;
       continue;
     }
-    const normalized = normalizeUrl(entry.url);
+    const normalized = normalizeUrl(url);
     const existing = await store.getBookmarkByNormalized(userId, normalized);
     const now = new Date().toISOString();
     if (!existing) {
       const row = await store.createBookmark({
         userId,
-        url: entry.url,
+        url,
         urlNormalized: normalized,
         title: entry.title,
         description: entry.description,
@@ -279,7 +272,7 @@ export async function applyLinksImportEntries(
       continue;
     }
     const patch: Record<string, unknown> = {
-      url: entry.url,
+      url,
       title: entry.title,
       description: entry.description,
       notes: entry.notes,

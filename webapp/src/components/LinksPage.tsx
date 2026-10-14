@@ -73,8 +73,11 @@ function removeTagFromQuery(raw: string, tagName: string): string {
 function extractUrlCandidate(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed || /\s/.test(trimmed)) return '';
+  if (trimmed.startsWith('/') || trimmed.startsWith('\\')) return '';
+  const candidate =
+    /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) ? trimmed : `https://${trimmed}`;
   try {
-    const url = new URL(trimmed);
+    const url = new URL(candidate);
     return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : '';
   } catch {
     return '';

@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { AutoTextarea } from '@/components/links/AutoTextarea';
 import type { AuthedFetch } from '@/lib/api/shared';
-import { splitLinkdingNotes } from '@/lib/links-utils';
+import { ensureLinksUrlScheme, splitLinkdingNotes } from '@/lib/links-utils';
 import {
   checkLinkBookmark,
   createLinkBookmark,
@@ -73,12 +73,13 @@ export function LinkModal({
   }
 
   async function doRescrape() {
-    if (!form.url.trim()) return;
+    const url = ensureLinksUrlScheme(form.url);
+    if (!url) return;
     setBusy(true);
     setError('');
     setRescrape('');
     try {
-      const data = await checkLinkBookmark(linksFetch, form.url.trim());
+      const data = await checkLinkBookmark(linksFetch, url);
       if (data.metadata?.title && !form.title) set('title', data.metadata.title);
       if (data.metadata?.description && !form.description) {
         set('description', data.metadata.description);
@@ -92,7 +93,8 @@ export function LinkModal({
   }
 
   async function save() {
-    if (!form.url.trim()) {
+    const url = ensureLinksUrlScheme(form.url);
+    if (!url) {
       setError('URL is required.');
       return;
     }
@@ -100,7 +102,7 @@ export function LinkModal({
     setError('');
     try {
       const payload = {
-        url: form.url.trim(),
+        url,
         title: form.title,
         description: form.description,
         notes: form.notes,

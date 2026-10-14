@@ -6,6 +6,33 @@
 
 const UTM_PARAM = /^utm_/i;
 
+const SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
+
+// Bare domains pasted from address bars / chat apps ("www.google.com")
+// carry no scheme, which `new URL()` rejects. Default those to https so
+// the bookmark form accepts what users actually paste. Input that already
+// has a scheme (including `javascript:`) is returned untouched so the
+// protocol check in isValidHttpUrl still rejects it.
+export function ensureHttpScheme(raw: unknown): string {
+  const input = String(raw ?? '').trim();
+  if (!input || SCHEME_RE.test(input)) return input;
+  // Path-like input ("/docs", "\share") is not a bare domain: prepending a
+  // scheme would turn it into a misleading host ("https://docs"), so leave
+  // it for isValidHttpUrl to reject as before.
+  if (input.startsWith('/') || input.startsWith('\\')) return input;
+  return `https://${input}`;
+}
+
+export function isValidHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    return u.hostname !== '';
+  } catch {
+    return false;
+  }
+}
+
 const DEFAULT_PORTS: Record<string, string> = {
   "http:": "80",
   "https:": "443",

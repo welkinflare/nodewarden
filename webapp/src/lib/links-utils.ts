@@ -45,6 +45,17 @@ export function formatLinksRelative(iso: string, now: number = Date.now()): stri
   return `${Math.floor(mon / 12)}y ago`;
 }
 
+// Mirror of src/linkding/normalize.ts#ensureHttpScheme for the Links UI:
+// default schemeless input ("www.google.com") to https so the bookmark
+// form accepts what users actually paste. Anything that already has a
+// scheme is returned untouched.
+export function ensureLinksUrlScheme(raw: unknown): string {
+  const input = String(raw ?? '').trim();
+  if (!input || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(input)) return input;
+  if (input.startsWith('/') || input.startsWith('\\')) return input;
+  return `https://${input}`;
+}
+
 export function displayLinksUrl(raw: string): string {
   try {
     const u = new URL(raw);
